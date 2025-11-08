@@ -17,7 +17,14 @@ public class LoginResponse {
 	private String email;
 	private String role;
 	private String token;
-	private Integer ddoCount;
-	private Integer form16ACount;
-	private Integer form16Count;
+    private String city;
+    private String address;
+    private String pinCode;
+//GSTIN details
+    private String gstNumber;
+    private String gstName;
+    private String accountHolderName;
+
+    //DDO details
+    private String ddoCode;
 }

@@ -59,8 +59,13 @@ public class User {
 	@Column(name = "responsible_person")
 	private String responsiblePerson;
 
+    private String address;
+
 	@Column(name = "pin")
-	private String pin;
+	private String pinCode;
+
+    @Column(name = "city")
+    private String city;
 
 	@Column(name = "role")
 	private String role;
@@ -79,7 +84,7 @@ public class User {
 
 	@ManyToOne
 	@JoinColumn(name = "admin_id") // Foreign key reference to Admin user
-	private User admin;
+	private User createdBy;
 
 	@PrePersist
 	protected void onCreate() {

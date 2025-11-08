@@ -27,11 +27,11 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 	// Optional method to fetch user by username
 	Optional<User> findByUserName(String userName);
 
-	List<User> findByRoleAndStatusAndAdminId(String role, String status, Integer adminId);
+//	List<User> findByRoleAndStatusAndAdminId(String role, String status, Integer adminId);
 
 	List<User> findByRoleAndStatus(String role, String status);
 
-	Page<User> findByRoleAndStatusAndAdminId(String role, String status, Integer adminId, Pageable pageable);
+	Page<User> findByRoleAndStatusAndCreatedBy(String role, String status, Integer adminId, Pageable pageable);
 
 	@Query("select user from User user where user.email =:email and user.status ='active'")
 	Optional<User> findByEmailIdAndStatus(String email);

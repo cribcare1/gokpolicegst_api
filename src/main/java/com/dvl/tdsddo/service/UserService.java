@@ -28,4 +28,12 @@ public interface UserService {
 	public DashBoardresponse viewDashBoard(String tanNumber);
 
 	public Map<String, Object> editDdoDetails(Integer ddoId, EditDDORequest request);
+    public void saveAuditLog(String tableName, String recordId, String columnName,
+                             String oldValue, String newValue,
+                             String actionType, Integer updatedBy);
+    public void saveAuditLogAsync(String tableName, String recordId, String columnName,
+                                  String oldValue, String newValue,
+                                  String actionType, Integer updatedBy);
+
+    public Map<String, Object> editAdmin(User updatedUser);
 }

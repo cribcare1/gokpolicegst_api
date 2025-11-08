@@ -10,6 +10,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.dvl.tdsddo.model.AuditLog;
+import com.dvl.tdsddo.model.GSTMaster;
+import com.dvl.tdsddo.repository.AuditLogRepository;
+import com.dvl.tdsddo.repository.GSTRepository;
+import lombok.RequiredArgsConstructor;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPFile;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +23,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -41,12 +47,16 @@ import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 
 @Service
+@RequiredArgsConstructor
 public class UserserviceImpl implements UserService {
-
+    private final AuditLogRepository auditLogRepository;
 	@Autowired
 	private UserRepository userRepository;
 	@Autowired
 	private PasswordEncoder encoder;
+
+    @Autowired
+    private GSTRepository gstRepository;
 
 	@Autowired
 	private S3Client s3Client;
@@ -95,6 +105,8 @@ public class UserserviceImpl implements UserService {
 		return response;
 	}
 
+
+
 	private Map<String, Object> addUser(User user, String role) {
 		Map<String, Object> response = new HashMap<>();
 
@@ -138,7 +150,7 @@ public class UserserviceImpl implements UserService {
 				return Map.of(TdsDdoConstant.MESSAGE, "Provide valid admin details.", TdsDdoConstant.STATUS,
 						TdsDdoConstant.ERROR);
 			}
-			user.setAdmin(admin); // Link this DDO to the Admin
+			user.setCreatedBy(admin); // Link this DDO to the Admin
 			return addUser(user, "DDO");
 		} catch (Exception e) {
 			return Map.of("message", "Authentication failed: " + e.getMessage(), "status", "error");
@@ -167,7 +179,7 @@ public class UserserviceImpl implements UserService {
 	@Override
 	public Map<String, Object> getAllActiveDDOs(Integer adminId, int page, int size) {
 		Pageable pageable = PageRequest.of(page, size, Sort.by("fullName").ascending());
-		Page<User> activeDdoPage = userRepository.findByRoleAndStatusAndAdminId("DDO", "active", adminId, pageable);
+		Page<User> activeDdoPage = userRepository.findByRoleAndStatusAndCreatedBy("DDO", "active", adminId, pageable);
 
 		if (activeDdoPage == null || activeDdoPage.isEmpty()) {
 			return Map.of(TdsDdoConstant.MESSAGE, "No active DDOs found for the given admin.", TdsDdoConstant.STATUS,
@@ -232,21 +244,31 @@ public class UserserviceImpl implements UserService {
 			LoginResponse loginResponse = null;
 
 			if (user.getRole() != null && user.getRole().equalsIgnoreCase("ddo")) {
-				DashBoardresponse dashBoardresponse = viewDashBoard(user.getDdoTan());
+				//DashBoardresponse dashBoardresponse = viewDashBoard(user.getDdoTan());
 				// Build LoginResponse
 				loginResponse = new LoginResponse(user.getId(), user.getFullName(), user.getUserName(),
-						user.getMobileNumber(), user.getEmail(), user.getRole(), token, 0,
-						dashBoardresponse.getForm16ACount(), dashBoardresponse.getForm16Count());
+						user.getMobileNumber(), user.getEmail(), user.getRole(), token, user.getCity(),user.getAddress(),user.getPinCode(),null,null,null,user.getDdoCode());
 			}
 
+            if (user.getRole() != null && user.getRole().equalsIgnoreCase("gstin")) {
+//                DashBoardresponse dashBoardresponse = viewDashBoard(user.getDdoTan());
+               GSTMaster gm= gstRepository.findByUserIdAndStatus(user.getId(),TdsDdoConstant.ACTIVE);
+                // Build LoginResponse
+                if(gm!=null){
+                    loginResponse = new LoginResponse(user.getId(), user.getFullName(), user.getUserName(),
+                            user.getMobileNumber(), user.getEmail(), user.getRole(), token, user.getCity(),user.getAddress(),user.getPinCode(), gm.getGstNumber(), gm.getGstName(),gm.getGstHolderName(),user.getDdoCode());
+                }else
+                loginResponse = new LoginResponse(user.getId(), user.getFullName(), user.getUserName(),
+                        user.getMobileNumber(), user.getEmail(), user.getRole(), token, user.getCity(),user.getAddress(),user.getPinCode(),null,null,null,user.getDdoCode());
+            }
+
 			if (user.getRole() != null && user.getRole().equalsIgnoreCase("admin")) {
-				DashBoardresponse dashBoardresponse = viewDashBoard(null);
-				List<User> ddoCount = userRepository.findByRoleAndStatus("DDO", "active");
+//				DashBoardresponse dashBoardresponse = viewDashBoard(null);
+//				List<User> ddoCount = userRepository.findByRoleAndStatus("DDO", "active");
 
 				// Build LoginResponse
 				loginResponse = new LoginResponse(user.getId(), user.getFullName(), user.getUserName(),
-						user.getMobileNumber(), user.getEmail(), user.getRole(), token, ddoCount.size(),
-						dashBoardresponse.getForm16ACount(), dashBoardresponse.getForm16Count());
+						user.getMobileNumber(), user.getEmail(), user.getRole(), token,user.getCity(),user.getAddress(),user.getPinCode(),null,null,null,null);
 			}
 
 			return Map.of("message", "You have logged in successfully.", "login_response", loginResponse, "status",
@@ -264,11 +286,11 @@ public class UserserviceImpl implements UserService {
 			// Admin check (only if adminId is provided)
 			if (adminId != null) {
 				User admin = userRepository.findById(adminId).orElse(null);
-				if (admin == null) {
-					return Map.of(TdsDdoConstant.MESSAGE, "Provide valid admin details.", TdsDdoConstant.STATUS,
+				if (admin == null || !admin.getRole().equalsIgnoreCase("GSTIN")) {
+					return Map.of(TdsDdoConstant.MESSAGE, "Provide valid GSTIN details.", TdsDdoConstant.STATUS,
 							TdsDdoConstant.ERROR);
 				}
-				user.setAdmin(admin); // Link user to admin
+				user.setCreatedBy(admin); // Link user to admin
 			}
 
 			// Uniqueness checks
@@ -278,11 +300,6 @@ public class UserserviceImpl implements UserService {
 						TdsDdoConstant.ERROR);
 			}
 
-			// Additional uniqueness checks (if needed)
-			if (userRepository.existsByDdoTan(user.getDdoTan())) {
-				return Map.of(TdsDdoConstant.MESSAGE, "DDO TAN already exists", TdsDdoConstant.STATUS,
-						TdsDdoConstant.ERROR);
-			}
 
 			if (userRepository.existsByDdoCode(user.getDdoCode())) {
 				return Map.of(TdsDdoConstant.MESSAGE, "DDO Code already exists", TdsDdoConstant.STATUS,
@@ -292,15 +309,18 @@ public class UserserviceImpl implements UserService {
 			// Final save
 			user.setRole("DDO");
 			user.setStatus(TdsDdoConstant.ACTIVE);
-			user.setPassword(encoder.encode(user.getPassword()));
-			user.setUserName(user.getDdoTan());
+            String pass=user.getDdoCode()+"@1";
+			user.setPassword(encoder.encode(pass));
+            user.setCity(user.getCity());
+            user.setPinCode(user.getPinCode());
+			user.setUserName(user.getDdoCode());
 
 			User savedUser = userRepository.save(user);
 
-			List<User> ddoCount = userRepository.findByRoleAndStatus("DDO", "active");
+//			List<User> ddoCount = userRepository.findByRoleAndStatus("DDO", "active");
 
 			return Map.of(TdsDdoConstant.MESSAGE, "User added successfully", TdsDdoConstant.STATUS,
-					TdsDdoConstant.SUCCESS, "userId", savedUser.getId(), "ddoCount", ddoCount.size());
+					TdsDdoConstant.SUCCESS, "userId", savedUser.getId());
 
 		} catch (Exception e) {
 			return Map.of("message", "User creation failed: " + e.getMessage(), "status", "error");
@@ -821,5 +841,144 @@ public class UserserviceImpl implements UserService {
 		return Map.of(TdsDdoConstant.STATUS, TdsDdoConstant.SUCCESS, TdsDdoConstant.MESSAGE,
 				"DDO details updated successfully.");
 	}
+
+    @Async
+    @Override
+    public void saveAuditLog(String tableName, String recordId, String columnName,
+                             String oldValue, String newValue,
+                             String actionType, Integer updatedBy) {
+        AuditLog log = new AuditLog();
+        log.setTableName(tableName);
+        log.setRecordId(recordId);
+        log.setColumnName(columnName);
+        log.setOldValue(oldValue);
+        log.setNewValue(newValue);
+        log.setActionType(actionType);
+        log.setUpdateBy(updatedBy);
+        auditLogRepository.save(log);
+    }
+
+    @Async
+    public void saveAuditLogAsync(String tableName, String recordId, String columnName,
+                                  String oldValue, String newValue,
+                                  String actionType, Integer updatedBy) {
+        try {
+            AuditLog log = new AuditLog();
+            log.setTableName(tableName);
+            log.setRecordId(recordId);
+            log.setColumnName(columnName);
+            log.setOldValue(oldValue);
+            log.setNewValue(newValue);
+            log.setActionType(actionType);
+            log.setUpdateBy(updatedBy);
+            auditLogRepository.save(log);
+        } catch (Exception e) {
+            // prevent audit failure from breaking flow
+            System.err.println("Audit Log Error: " + e.getMessage());
+        }
+    }
+
+
+    @Override
+    public Map<String, Object> editAdmin(User updatedUser) {
+        Map<String, Object> response = new HashMap<>();
+
+        // ✅ Validate input
+        if (updatedUser.getId() == null) {
+            return Map.of(
+                    TdsDdoConstant.MESSAGE, "User ID is required for update",
+                    TdsDdoConstant.STATUS, TdsDdoConstant.ERROR
+            );
+        }
+
+        // ✅ Find existing admin
+        User existingUser = userRepository.findById(updatedUser.getId())
+                .orElse(null);
+
+        if (existingUser == null) {
+            return Map.of(
+                    TdsDdoConstant.MESSAGE, "Admin not found with ID: " + updatedUser.getId(),
+                    TdsDdoConstant.STATUS, TdsDdoConstant.ERROR
+            );
+        }
+
+        // ✅ Check duplicate validations only if the field is changing
+        if (updatedUser.getUserName() != null
+                && !updatedUser.getUserName().equals(existingUser.getUserName())
+                && userRepository.existsByUserName(updatedUser.getUserName())) {
+            return Map.of(
+                    TdsDdoConstant.MESSAGE, "Username already exists",
+                    TdsDdoConstant.STATUS, TdsDdoConstant.ERROR
+            );
+        }
+
+        if (updatedUser.getEmail() != null
+                && !updatedUser.getEmail().equals(existingUser.getEmail())
+                && userRepository.existsByEmail(updatedUser.getEmail())) {
+            return Map.of(
+                    TdsDdoConstant.MESSAGE, "Email already exists",
+                    TdsDdoConstant.STATUS, TdsDdoConstant.ERROR
+            );
+        }
+
+        if (updatedUser.getMobileNumber() != null
+                && !updatedUser.getMobileNumber().equals(existingUser.getMobileNumber())
+                && userRepository.existsByMobileNumber(updatedUser.getMobileNumber())) {
+            return Map.of(
+                    TdsDdoConstant.MESSAGE, "Mobile number already exists",
+                    TdsDdoConstant.STATUS, TdsDdoConstant.ERROR
+            );
+        }
+
+        // ✅ Update only non-null fields
+        if (updatedUser.getFullName() != null)
+            existingUser.setFullName(updatedUser.getFullName());
+
+        if (updatedUser.getUserName() != null)
+            existingUser.setUserName(updatedUser.getUserName());
+
+        if (updatedUser.getPassword() != null)
+            existingUser.setPassword(encoder.encode(updatedUser.getPassword()));
+
+        if (updatedUser.getEmail() != null)
+            existingUser.setEmail(updatedUser.getEmail());
+
+        if (updatedUser.getMobileNumber() != null)
+            existingUser.setMobileNumber(updatedUser.getMobileNumber());
+
+        if (updatedUser.getAddress() != null)
+            existingUser.setAddress(updatedUser.getAddress());
+
+        if (updatedUser.getCity() != null)
+            existingUser.setCity(updatedUser.getCity());
+
+        if (updatedUser.getPinCode() != null)
+            existingUser.setPinCode(updatedUser.getPinCode());
+
+        if (updatedUser.getPoliceStation() != null)
+            existingUser.setPoliceStation(updatedUser.getPoliceStation());
+
+        if (updatedUser.getDdoCode() != null)
+            existingUser.setDdoCode(updatedUser.getDdoCode());
+
+        if (updatedUser.getDdoTan() != null)
+            existingUser.setDdoTan(updatedUser.getDdoTan());
+
+
+        if (updatedUser.getDesignation() != null)
+            existingUser.setDesignation(updatedUser.getDesignation());
+
+        if (updatedUser.getStatus() != null)
+            existingUser.setStatus(updatedUser.getStatus());
+
+        // ✅ Save updates
+        User savedUser = userRepository.save(existingUser);
+
+        response.put(TdsDdoConstant.MESSAGE, "Admin updated successfully");
+        response.put(TdsDdoConstant.STATUS, TdsDdoConstant.SUCCESS);
+        response.put("userId", savedUser.getId());
+
+        return response;
+    }
 
 }

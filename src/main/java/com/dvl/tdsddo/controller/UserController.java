@@ -2,6 +2,7 @@ package com.dvl.tdsddo.controller;
 
 import java.util.Map;
 
+import com.dvl.tdsddo.model.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,7 +24,7 @@ public class UserController {
 	@Autowired
 	private UserService userService;
 
-	@PostMapping("/addDDOByAdmin")
+	@PostMapping("/addDDOByGSTIN")
 	public Map<String, Object> addDDOByAdmin(@RequestBody UserSignUpRequest user) {
 		return userService.createUserWithAdminCheck(user.getUser(), user.getAdminId());
 	}
@@ -57,5 +58,13 @@ public class UserController {
 		Map<String, Object> response = userService.editDdoDetails(ddoId, request);
 		return ResponseEntity.ok(response);
 	}
+
+
+        @PostMapping("/editAdmin")
+    public ResponseEntity<Map<String, Object>> editAdmin(
+                                                       @RequestBody User request) {
+        Map<String, Object> response = userService.editAdmin( request);
+        return ResponseEntity.ok(response);
+    }
 
 }

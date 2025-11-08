@@ -11,4 +11,5 @@ public class TdsDdoConstant {
 	public static final String FORM16 = "form16";
 	public static final String FORM16_List = "form16_list";
 	public static final String DDO_DATA = "ddo_data";
+    public static final String ALL ="all" ;
 }
