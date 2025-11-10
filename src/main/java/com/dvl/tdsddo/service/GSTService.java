@@ -16,4 +16,6 @@ public interface GSTService {
     public ApiResponse saveOrUpdateGST(GSTMasterRequest request);
 
     public ApiResponse getAllActiveGstDetails();
+
+    public ApiResponse getAllDdosByGstId(Integer gstId);
 }

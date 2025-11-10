@@ -9,14 +9,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/banks")
+@RequestMapping("/tds/banks")
 @RequiredArgsConstructor
 public class BankController {
 
     private final BankService bankService;
 
     // Create or Update Bank Details
-    @PostMapping("/saveBank")
+    @PostMapping("/saveOrUpdateBank")
     public ResponseEntity<ApiResponse> saveOrUpdateBank(@RequestBody BankDetailsRequest request) {
         ApiResponse response = bankService.saveOrUpdateBank(request);
         if (TdsDdoConstant.SUCCESS.equals(response.getStatus())) {
@@ -26,7 +26,7 @@ public class BankController {
     }
 
     // Delete (Soft Delete) Bank Record
-    @DeleteMapping("/{bankId}/deleteBank")
+    @PostMapping("/deleteBank/{bankId}")
     public ResponseEntity<ApiResponse> deleteBank(
             @PathVariable Integer bankId,
             @RequestParam Integer updatedBy) {

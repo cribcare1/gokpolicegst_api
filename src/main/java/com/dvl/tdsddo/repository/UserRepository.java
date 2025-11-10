@@ -3,6 +3,9 @@ package com.dvl.tdsddo.repository;
 import java.util.List;
 import java.util.Optional;
 
+import com.dvl.tdsddo.response.DashBoardresponse;
+import com.dvl.tdsddo.response.DashboardStatsResponse;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -42,4 +45,23 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 	@Query("select user from User user where user.userName =:userName and user.status ='active'")
 	Optional<User> findByUserNameAndStatus(String userName);
 
+
+
+
+    @Query("""
+        SELECT new com.dvl.tdsddo.response.DashboardStatsResponse(
+            (SELECT COUNT(p) FROM PanMaster p WHERE p.status = 'active'),
+            (SELECT COUNT(b) FROM BankDetailsMaster b WHERE b.status = 'active'),
+            (SELECT COUNT(u) FROM User u WHERE u.status = 'active' AND u.role = 'DDO'),
+            (SELECT COUNT(g) FROM GSTMaster g WHERE g.status = 'active'),
+            (SELECT COUNT(h) FROM HSNMaster h WHERE h.status = 'active')
+        )
+        FROM User u
+        WHERE u.role = 'DDO'
+        """)
+    DashboardStatsResponse getActiveDashboardCounts();
+
+    boolean existsByDdoCodeAndIdNot(String ddoCode, Integer id);
+
+    boolean existsByMobileNumberAndIdNot(@Pattern(regexp = "^[0-9]{10}$", message = "Mobile number must be 10 digits") String mobile, Integer id);
 }

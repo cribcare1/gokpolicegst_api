@@ -18,7 +18,7 @@ public interface BankDetailsRepository extends JpaRepository<BankDetailsMaster,I
     @Query("""
         SELECT new com.dvl.tdsddo.response.BankDetailsResponse(
             b.id, b.bankName, b.branchName, b.accountNumber, b.accountType,
-            b.accountName, b.ifscCode, b.micrCode, g.id, g.gstName, b.status
+            b.accountName, b.ifscCode, b.micrCode, g.id, g.gstName
         )
         FROM BankDetailsMaster b
         JOIN GSTMaster g ON b.gstId = g.id

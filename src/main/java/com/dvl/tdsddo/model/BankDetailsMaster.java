@@ -1,5 +1,6 @@
 package com.dvl.tdsddo.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import com.dvl.tdsddo.util.EncryptionUtil;
@@ -41,30 +42,31 @@ public class BankDetailsMaster extends BaseModel {
     private Integer gstId;
 
     @Column(name = "status", columnDefinition = "TEXT")
+    @JsonIgnore
     private String status;
 
-    // 🔒 Encrypt before saving or updating
-    @PrePersist
-    @PreUpdate
-    private void encryptSensitiveData() {
-        EncryptionUtil util = new EncryptionUtil();
-        if (accountNumber != null && !accountNumber.startsWith("ENC(")) {
-            accountNumber = "ENC(" + util.encrypt(accountNumber) + ")";
-        }
-        if (ifscCode != null && !ifscCode.startsWith("ENC(")) {
-            ifscCode = "ENC(" + util.encrypt(ifscCode) + ")";
-        }
-    }
+//    // 🔒 Encrypt before saving or updating
+//    @PrePersist
+//    @PreUpdate
+//    private void encryptSensitiveData() {
+//        EncryptionUtil util = new EncryptionUtil();
+//        if (accountNumber != null && !accountNumber.startsWith("ENC(")) {
+//            accountNumber = "ENC(" + util.encrypt(accountNumber) + ")";
+//        }
+//        if (ifscCode != null && !ifscCode.startsWith("ENC(")) {
+//            ifscCode = "ENC(" + util.encrypt(ifscCode) + ")";
+//        }
+//    }
 
     // 🔓 Decrypt after loading
-    @PostLoad
-    private void decryptSensitiveData() {
-        EncryptionUtil util = new EncryptionUtil();
-        if (accountNumber != null && accountNumber.startsWith("ENC(")) {
-            accountNumber = util.decrypt(accountNumber.substring(4, accountNumber.length() - 1));
-        }
-        if (ifscCode != null && ifscCode.startsWith("ENC(")) {
-            ifscCode = util.decrypt(ifscCode.substring(4, ifscCode.length() - 1));
-        }
-    }
+//    @PostLoad
+//    private void decryptSensitiveData() {
+//        EncryptionUtil util = new EncryptionUtil();
+//        if (accountNumber != null && accountNumber.startsWith("ENC(")) {
+//            accountNumber = util.decrypt(accountNumber.substring(4, accountNumber.length() - 1));
+//        }
+//        if (ifscCode != null && ifscCode.startsWith("ENC(")) {
+//            ifscCode = util.decrypt(ifscCode.substring(4, ifscCode.length() - 1));
+//        }
+//    }
 }

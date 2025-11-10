@@ -3,10 +3,12 @@ package com.dvl.tdsddo.serviceImpl;
 import com.dvl.tdsddo.constatnt.TdsDdoConstant;
 import com.dvl.tdsddo.model.GSTMaster;
 import com.dvl.tdsddo.model.User;
+import com.dvl.tdsddo.repository.DdoGstMappingRepository;
 import com.dvl.tdsddo.repository.GSTRepository;
 import com.dvl.tdsddo.repository.UserRepository;
 import com.dvl.tdsddo.request.GSTMasterRequest;
 import com.dvl.tdsddo.response.ApiResponse;
+import com.dvl.tdsddo.response.DDOGstResponse;
 import com.dvl.tdsddo.response.GSTResponse;
 import com.dvl.tdsddo.service.GSTService;
 import com.dvl.tdsddo.service.UserService;
@@ -17,7 +19,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -27,6 +31,7 @@ public class GSTServiceImpl implements GSTService {
     private final UserService userService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final DdoGstMappingRepository ddoGstMappingRepository;
 
     @Override
     public ApiResponse saveOrUpdateGSTNew(GSTMasterRequest request) {
@@ -388,5 +393,22 @@ public class GSTServiceImpl implements GSTService {
             );
         }
     }
+    @Override
+    public ApiResponse getAllDdosByGstId(Integer gstId) {
+        try {
+            List<DDOGstResponse> ddos = ddoGstMappingRepository.findAllActiveDdosByGstId(gstId);
 
+            if (ddos.isEmpty()) {
+                return new ApiResponse("error", "No DDOs found for the given GST", null);
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("count", ddos.size());
+            result.put("ddos", ddos);
+
+            return new ApiResponse("success", "DDOs fetched successfully", result);
+        } catch (Exception e) {
+            return new ApiResponse("error", e.getMessage(), null);
+        }
+    }
 }

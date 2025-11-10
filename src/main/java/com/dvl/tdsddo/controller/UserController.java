@@ -3,6 +3,7 @@ package com.dvl.tdsddo.controller;
 import java.util.Map;
 
 import com.dvl.tdsddo.model.User;
+import com.dvl.tdsddo.request.UserRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,9 +26,22 @@ public class UserController {
 	private UserService userService;
 
 	@PostMapping("/addDDOByGSTIN")
-	public Map<String, Object> addDDOByAdmin(@RequestBody UserSignUpRequest user) {
-		return userService.createUserWithAdminCheck(user.getUser(), user.getAdminId());
+	public Map<String, Object> addDDOByAdmin(@RequestBody UserRequest user) {
+        if(user!=null && user.getId()!=null){
+            return  userService.updateUserWithPartialFields(user);
+        }
+		return userService.createUserWithAdminCheck(user);
 	}
+
+    @PostMapping("/delete-ddo/{userId}")
+    public Map<String, Object> deleteDdoById( @PathVariable Integer ddoUserId){
+        return userService.deleteDdoById(ddoUserId);
+    }
+
+//    @PostMapping("/addDDOByGSTIN")
+//    public Map<String, Object> addDDOByAdmin(@RequestBody UserRequest user) {
+//        return userService.createUserWithAdminCheck(user);
+//    }
 
 	@GetMapping("/getAllDDOByAdmin")
 	public Map<String, Object> getAllDDOByAdmin(@RequestParam Integer adminId,

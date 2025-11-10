@@ -4,16 +4,20 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.dvl.tdsddo.model.AuditLog;
+import com.dvl.tdsddo.model.DdoGStMapping;
 import com.dvl.tdsddo.model.GSTMaster;
 import com.dvl.tdsddo.repository.AuditLogRepository;
+import com.dvl.tdsddo.repository.DdoGstMappingRepository;
 import com.dvl.tdsddo.repository.GSTRepository;
+import com.dvl.tdsddo.request.DdoMigrationRequest;
+import com.dvl.tdsddo.request.UserRequest;
+import com.dvl.tdsddo.response.*;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPFile;
@@ -35,10 +39,6 @@ import com.dvl.tdsddo.model.User;
 import com.dvl.tdsddo.repository.UserRepository;
 import com.dvl.tdsddo.request.AuthRequest;
 import com.dvl.tdsddo.request.EditDDORequest;
-import com.dvl.tdsddo.response.DDOResponse;
-import com.dvl.tdsddo.response.DashBoardresponse;
-import com.dvl.tdsddo.response.LoginResponse;
-import com.dvl.tdsddo.response.ViewDDOResponse;
 import com.dvl.tdsddo.security.JwtService;
 import com.dvl.tdsddo.service.UserService;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -57,6 +57,8 @@ public class UserserviceImpl implements UserService {
 
     @Autowired
     private GSTRepository gstRepository;
+    @Autowired
+    private DdoGstMappingRepository ddoGstMappingRepository;
 
 	@Autowired
 	private S3Client s3Client;
@@ -247,7 +249,7 @@ public class UserserviceImpl implements UserService {
 				//DashBoardresponse dashBoardresponse = viewDashBoard(user.getDdoTan());
 				// Build LoginResponse
 				loginResponse = new LoginResponse(user.getId(), user.getFullName(), user.getUserName(),
-						user.getMobileNumber(), user.getEmail(), user.getRole(), token, user.getCity(),user.getAddress(),user.getPinCode(),null,null,null,user.getDdoCode());
+						user.getMobileNumber(), user.getEmail(), user.getRole(), token, user.getCity(),user.getAddress(),user.getPinCode(),null,null,null,null,user.getDdoCode());
 			}
 
             if (user.getRole() != null && user.getRole().equalsIgnoreCase("gstin")) {
@@ -256,10 +258,10 @@ public class UserserviceImpl implements UserService {
                 // Build LoginResponse
                 if(gm!=null){
                     loginResponse = new LoginResponse(user.getId(), user.getFullName(), user.getUserName(),
-                            user.getMobileNumber(), user.getEmail(), user.getRole(), token, user.getCity(),user.getAddress(),user.getPinCode(), gm.getGstNumber(), gm.getGstName(),gm.getGstHolderName(),user.getDdoCode());
+                            user.getMobileNumber(), user.getEmail(), user.getRole(), token, user.getCity(),user.getAddress(),user.getPinCode(), gm.getGstNumber(), gm.getGstName(),gm.getGstHolderName(),gm.getId(),user.getDdoCode());
                 }else
                 loginResponse = new LoginResponse(user.getId(), user.getFullName(), user.getUserName(),
-                        user.getMobileNumber(), user.getEmail(), user.getRole(), token, user.getCity(),user.getAddress(),user.getPinCode(),null,null,null,user.getDdoCode());
+                        user.getMobileNumber(), user.getEmail(), user.getRole(), token, user.getCity(),user.getAddress(),user.getPinCode(),null,null,null,null,user.getDdoCode());
             }
 
 			if (user.getRole() != null && user.getRole().equalsIgnoreCase("admin")) {
@@ -268,7 +270,7 @@ public class UserserviceImpl implements UserService {
 
 				// Build LoginResponse
 				loginResponse = new LoginResponse(user.getId(), user.getFullName(), user.getUserName(),
-						user.getMobileNumber(), user.getEmail(), user.getRole(), token,user.getCity(),user.getAddress(),user.getPinCode(),null,null,null,null);
+						user.getMobileNumber(), user.getEmail(), user.getRole(), token,user.getCity(),user.getAddress(),user.getPinCode(),null,null,null,null,null);
 			}
 
 			return Map.of("message", "You have logged in successfully.", "login_response", loginResponse, "status",
@@ -280,52 +282,310 @@ public class UserserviceImpl implements UserService {
 		}
 	}
 
-	@Override
-	public Map<String, Object> createUserWithAdminCheck(User user, Integer adminId) {
-		try {
-			// Admin check (only if adminId is provided)
-			if (adminId != null) {
-				User admin = userRepository.findById(adminId).orElse(null);
-				if (admin == null || !admin.getRole().equalsIgnoreCase("GSTIN")) {
-					return Map.of(TdsDdoConstant.MESSAGE, "Provide valid GSTIN details.", TdsDdoConstant.STATUS,
-							TdsDdoConstant.ERROR);
-				}
-				user.setCreatedBy(admin); // Link user to admin
-			}
+//	@Override
+//	public Map<String, Object> createUserWithAdminCheck(User user, Integer adminId,Integer gstId) {
+//		try {
+//			// Admin check (only if adminId is provided)
+//			if (adminId != null) {
+//				User admin = userRepository.findById(adminId).orElse(null);
+//				if (admin == null || !admin.getRole().equalsIgnoreCase("GSTIN")) {
+//					return Map.of(TdsDdoConstant.MESSAGE, "Provide valid GSTIN details.", TdsDdoConstant.STATUS,
+//							TdsDdoConstant.ERROR);
+//				}
+//				user.setCreatedBy(admin); // Link user to admin
+//			}
+//
+//			// Uniqueness checks
+//
+//			if (userRepository.existsByMobileNumber(user.getMobileNumber())) {
+//				return Map.of(TdsDdoConstant.MESSAGE, "Mobile number already exists", TdsDdoConstant.STATUS,
+//						TdsDdoConstant.ERROR);
+//			}
+//
+//
+//			if (userRepository.existsByDdoCode(user.getDdoCode())) {
+//				return Map.of(TdsDdoConstant.MESSAGE, "DDO Code already exists", TdsDdoConstant.STATUS,
+//						TdsDdoConstant.ERROR);
+//			}
+//
+//			// Final save
+//			user.setRole("DDO");
+//			user.setStatus(TdsDdoConstant.ACTIVE);
+//            String pass=user.getDdoCode()+"@1";
+//			user.setPassword(encoder.encode(pass));
+//            user.setCity(user.getCity());
+//            user.setPinCode(user.getPinCode());
+//			user.setUserName(user.getDdoCode());
+//
+//			User savedUser = userRepository.save(user);
+//
+////			List<User> ddoCount = userRepository.findByRoleAndStatus("DDO", "active");
+//
+//			return Map.of(TdsDdoConstant.MESSAGE, "User added successfully", TdsDdoConstant.STATUS,
+//					TdsDdoConstant.SUCCESS, "userId", savedUser.getId());
+//
+//		} catch (Exception e) {
+//			return Map.of("message", "User creation failed: " + e.getMessage(), "status", "error");
+//		}
+//	}
 
-			// Uniqueness checks
+@Override
+@Transactional
+public Map<String, Object> createUserWithAdminCheck(UserRequest userRequest) {
+    try {
+        // ✅ 1️⃣ Create new user object
+        User user = new User();
 
-			if (userRepository.existsByMobileNumber(user.getMobileNumber())) {
-				return Map.of(TdsDdoConstant.MESSAGE, "Mobile number already exists", TdsDdoConstant.STATUS,
-						TdsDdoConstant.ERROR);
-			}
+        // ✅ 2️⃣ Admin (GSTIN) validation
+        if (userRequest.getGstInUserId() != null) {
+            User admin = userRepository.findById(userRequest.getGstInUserId()).orElse(null);
+            if (admin == null || !"GSTIN".equalsIgnoreCase(admin.getRole())) {
+                return Map.of(
+                        TdsDdoConstant.MESSAGE, "Provide valid GSTIN details.",
+                        TdsDdoConstant.STATUS, TdsDdoConstant.ERROR
+                );
+            }
+            user.setCreatedBy(admin);
+        }
+
+        // ✅ 3️⃣ Duplicate checks (by mobile and DDO code)
+        if (userRepository.existsByMobileNumber(userRequest.getMobile())) {
+            return Map.of(
+                    TdsDdoConstant.MESSAGE, "Mobile number already exists",
+                    TdsDdoConstant.STATUS, TdsDdoConstant.ERROR
+            );
+        }
+
+        if (userRequest.getDdoCode() != null && userRepository.existsByDdoCode(userRequest.getDdoCode())) {
+            return Map.of(
+                    TdsDdoConstant.MESSAGE, "DDO Code already exists",
+                    TdsDdoConstant.STATUS, TdsDdoConstant.ERROR
+            );
+        }
+
+        // ✅ 4️⃣ Copy basic fields
+        user.setFullName(userRequest.getDdoName());
+        user.setUserName(userRequest.getDdoCode());
+        user.setMobileNumber(userRequest.getMobile());
+        user.setEmail(userRequest.getEmail());
+        user.setPoliceStation(userRequest.getPoliceStation());
+        user.setDdoCode(userRequest.getDdoCode());
+        user.setAddress(userRequest.getAddress());
+        user.setPinCode(userRequest.getPinCode());
+        user.setCity(userRequest.getCity());
+
+        // ✅ 5️⃣ Default values
+        user.setRole("DDO");
+        user.setStatus(TdsDdoConstant.ACTIVE);
+
+        // Default password = DDO code + "@1"
+        String pass = (user.getDdoCode() != null ? user.getDdoCode() : "DDO") + "@1";
+        user.setPassword(encoder.encode(pass));
+
+        // Username = DDO code if not provided
+        if (user.getUserName() == null && user.getDdoCode() != null) {
+            user.setUserName(user.getDdoCode());
+        }
+
+        // ✅ 6️⃣ Save user
+        User savedUser = userRepository.save(user);
+
+        // ✅ 7️⃣ GST mapping
+        if (userRequest.getGstId() != null) {
+            // Check if this DDO already mapped
+            Optional<DdoGStMapping> existingMapping =
+                    ddoGstMappingRepository.findByDdoIdAndStatus(savedUser.getId(), TdsDdoConstant.ACTIVE);
+
+            if (existingMapping.isPresent()) {
+                return Map.of(
+                        TdsDdoConstant.MESSAGE, "This DDO is already mapped to another GST.",
+                        TdsDdoConstant.STATUS, TdsDdoConstant.ERROR
+                );
+            }
+
+            GSTMaster gst = gstRepository.findById(userRequest.getGstId())
+                    .orElseThrow(() -> new RuntimeException("GST record not found"));
+
+            DdoGStMapping mapping = DdoGStMapping.builder()
+                    .ddoId(savedUser.getId())
+                    .fromGst(userRequest.getGstId())
+                    .toGST(userRequest.getGstId())
+                    .status(TdsDdoConstant.ACTIVE)
+                    .build();
+
+            ddoGstMappingRepository.save(mapping);
+        }
+
+        // ✅ 8️⃣ Return success response
+        return Map.of(
+                TdsDdoConstant.MESSAGE, "DDO user created and mapped successfully",
+                TdsDdoConstant.STATUS, TdsDdoConstant.SUCCESS,
+                "userId", savedUser.getId()
+        );
+
+    } catch (Exception e) {
+        return Map.of(
+                TdsDdoConstant.MESSAGE, "User creation failed: " + e.getMessage(),
+                TdsDdoConstant.STATUS, TdsDdoConstant.ERROR
+        );
+    }
+}
 
 
-			if (userRepository.existsByDdoCode(user.getDdoCode())) {
-				return Map.of(TdsDdoConstant.MESSAGE, "DDO Code already exists", TdsDdoConstant.STATUS,
-						TdsDdoConstant.ERROR);
-			}
 
-			// Final save
-			user.setRole("DDO");
-			user.setStatus(TdsDdoConstant.ACTIVE);
-            String pass=user.getDdoCode()+"@1";
-			user.setPassword(encoder.encode(pass));
-            user.setCity(user.getCity());
-            user.setPinCode(user.getPinCode());
-			user.setUserName(user.getDdoCode());
+    @Override
+    @Transactional
+    public Map<String, Object> updateUserWithPartialFields(UserRequest userRequest) {
+        try {
+            // 1️⃣ Validate ID
+            if (userRequest.getId() == null) {
+                return Map.of(
+                        TdsDdoConstant.MESSAGE, "User ID is required for update",
+                        TdsDdoConstant.STATUS, TdsDdoConstant.ERROR
+                );
+            }
 
-			User savedUser = userRepository.save(user);
+            // 2️⃣ Fetch existing user
+            User existingUser = userRepository.findById(userRequest.getId())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
 
-//			List<User> ddoCount = userRepository.findByRoleAndStatus("DDO", "active");
+            // 3️⃣ Only DDO role can be updated
+            if (!"DDO".equalsIgnoreCase(existingUser.getRole())) {
+                return Map.of(
+                        TdsDdoConstant.MESSAGE, "Only DDO users can be updated",
+                        TdsDdoConstant.STATUS, TdsDdoConstant.ERROR
+                );
+            }
 
-			return Map.of(TdsDdoConstant.MESSAGE, "User added successfully", TdsDdoConstant.STATUS,
-					TdsDdoConstant.SUCCESS, "userId", savedUser.getId());
+            // 4️⃣ Update only non-null fields
+            if (userRequest.getDdoName() != null)
+                existingUser.setFullName(userRequest.getDdoName());
 
-		} catch (Exception e) {
-			return Map.of("message", "User creation failed: " + e.getMessage(), "status", "error");
-		}
-	}
+            if (userRequest.getMobile() != null) {
+                // Check for duplicate mobile
+                if (userRepository.existsByMobileNumberAndIdNot(userRequest.getMobile(), existingUser.getId())) {
+                    return Map.of(
+                            TdsDdoConstant.MESSAGE, "Mobile number already exists",
+                            TdsDdoConstant.STATUS, TdsDdoConstant.ERROR
+                    );
+                }
+                existingUser.setMobileNumber(userRequest.getMobile());
+            }
+
+            if (userRequest.getEmail() != null)
+                existingUser.setEmail(userRequest.getEmail());
+
+            if (userRequest.getPoliceStation() != null)
+                existingUser.setPoliceStation(userRequest.getPoliceStation());
+
+            if (userRequest.getDdoCode() != null) {
+                // Check for duplicate DDO code
+                if (userRepository.existsByDdoCodeAndIdNot(userRequest.getDdoCode(), existingUser.getId())) {
+                    return Map.of(
+                            TdsDdoConstant.MESSAGE, "DDO Code already exists",
+                            TdsDdoConstant.STATUS, TdsDdoConstant.ERROR
+                    );
+                }
+                existingUser.setDdoCode(userRequest.getDdoCode());
+            }
+
+            if (userRequest.getAddress() != null)
+                existingUser.setAddress(userRequest.getAddress());
+
+            if (userRequest.getPinCode() != null)
+                existingUser.setPinCode(userRequest.getPinCode());
+
+            if (userRequest.getCity() != null)
+                existingUser.setCity(userRequest.getCity());
+
+            // 5️⃣ Save updated user
+            User updatedUser = userRepository.save(existingUser);
+
+            // 6️⃣ Optional GST remapping
+            if (userRequest.getGstId() != null) {
+                Optional<DdoGStMapping> existingMapping =
+                        ddoGstMappingRepository.findByDdoIdAndStatus(updatedUser.getId(), TdsDdoConstant.ACTIVE);
+
+                if (existingMapping.isPresent()) {
+                    DdoGStMapping mapping = existingMapping.get();
+                    if (!mapping.getToGST().equals(userRequest.getGstId())) {
+                        mapping.setToGST(userRequest.getGstId());
+                        ddoGstMappingRepository.save(mapping);
+                    }
+                } else {
+                    DdoGStMapping newMapping = DdoGStMapping.builder()
+                            .ddoId(updatedUser.getId())
+                            .fromGst(userRequest.getGstId())
+                            .toGST(userRequest.getGstId())
+                            .status(TdsDdoConstant.ACTIVE)
+                            .build();
+                    ddoGstMappingRepository.save(newMapping);
+                }
+            }
+
+            // ✅ 7️⃣ Success Response
+            return Map.of(
+                    TdsDdoConstant.MESSAGE, "DDO user updated successfully",
+                    TdsDdoConstant.STATUS, TdsDdoConstant.SUCCESS,
+                    "userId", updatedUser.getId()
+            );
+
+        } catch (Exception e) {
+            return Map.of(
+                    TdsDdoConstant.MESSAGE, "User update failed: " + e.getMessage(),
+                    TdsDdoConstant.STATUS, TdsDdoConstant.ERROR
+            );
+        }
+    }
+
+
+    @Override
+    @Transactional
+    public Map<String, Object> deleteDdoById(Integer ddoUserId) {
+        try {
+            // 1️⃣ Validate user existence
+            User existingUser = userRepository.findById(ddoUserId)
+                    .orElseThrow(() -> new RuntimeException("DDO user not found"));
+
+            // 2️⃣ Ensure only DDO users can be deleted
+            if (!"DDO".equalsIgnoreCase(existingUser.getRole())) {
+                return Map.of(
+                        TdsDdoConstant.MESSAGE, "Only DDO users can be deleted",
+                        TdsDdoConstant.STATUS, TdsDdoConstant.ERROR
+                );
+            }
+
+            // 3️⃣ Mark user as inactive (soft delete)
+            existingUser.setStatus(TdsDdoConstant.INACTIVE);
+            userRepository.save(existingUser);
+
+            // 4️⃣ Also deactivate their GST mapping
+           DdoGStMapping mappings = ddoGstMappingRepository.findByDdoIdAndStatus(
+                    ddoUserId, TdsDdoConstant.ACTIVE
+            ).orElse(null);
+
+            if(mappings!=null){
+                mappings.setStatus(TdsDdoConstant.INACTIVE);
+            ddoGstMappingRepository.save(mappings);
+
+            }
+
+
+            // ✅ 5️⃣ Return success response
+            return Map.of(
+                    TdsDdoConstant.MESSAGE, "DDO user deleted successfully",
+                    TdsDdoConstant.STATUS, TdsDdoConstant.SUCCESS,
+                    "userId", ddoUserId
+            );
+
+        } catch (Exception e) {
+            return Map.of(
+                    TdsDdoConstant.MESSAGE, "Failed to delete DDO user: " + e.getMessage(),
+                    TdsDdoConstant.STATUS, TdsDdoConstant.ERROR
+            );
+        }
+    }
+
 
 	@Override
 	public Map<String, Object> viewDdoDetailsUsingId(Integer ddoId) {
@@ -979,6 +1239,89 @@ public class UserserviceImpl implements UserService {
         response.put("userId", savedUser.getId());
 
         return response;
+    }
+
+
+    @Override
+    @Transactional
+    public ApiResponse migrateDdosBetweenGsts(DdoMigrationRequest request) {
+        try {
+            // ✅ Validate GSTs (2 queries)
+            GSTMaster fromGst = gstRepository.findById(request.getFromGstId())
+                    .orElseThrow(() -> new RuntimeException("From GST not found"));
+            GSTMaster toGst = gstRepository.findById(request.getToGstId())
+                    .orElseThrow(() -> new RuntimeException("To GST not found"));
+
+            if (!TdsDdoConstant.ACTIVE.equalsIgnoreCase(fromGst.getStatus()) ||
+                    !TdsDdoConstant.ACTIVE.equalsIgnoreCase(toGst.getStatus())) {
+                return new ApiResponse(TdsDdoConstant.ERROR, "Both GSTs must be active", null);
+            }
+
+            // ✅ Fetch all active mappings for given DDOs in ONE query
+            List<DdoGStMapping> existingMappings =
+                    ddoGstMappingRepository.findAllByDdoIdInAndStatus(request.getDdoIds(), TdsDdoConstant.ACTIVE);
+
+            Map<Integer, DdoGStMapping> mappingByDdo =
+                    existingMappings.stream().collect(Collectors.toMap(DdoGStMapping::getDdoId, m -> m));
+
+            List<DdoGStMapping> newMappings = new ArrayList<>();
+            List<Integer> moved = new ArrayList<>();
+            List<Integer> failed = new ArrayList<>();
+
+            for (Integer ddoId : request.getDdoIds()) {
+                DdoGStMapping existing = mappingByDdo.get(ddoId);
+
+                if (existing == null ||
+                        (existing.getToGST() != null && !Objects.equals(existing.getToGST(), request.getFromGstId()))) {
+                    failed.add(ddoId);
+                    continue;
+                }
+
+
+                // Mark old mapping inactive (in-memory)
+                existing.setStatus(TdsDdoConstant.INACTIVE);
+
+                // Prepare new mapping
+                DdoGStMapping newMap = DdoGStMapping.builder()
+                        .ddoId(ddoId)
+                        .fromGst(request.getFromGstId())
+                        .toGST(request.getToGstId())
+                        .status(TdsDdoConstant.ACTIVE)
+                        .build();
+
+                newMappings.add(newMap);
+                moved.add(ddoId);
+            }
+
+            // ✅ Save all updates & inserts in batch
+            ddoGstMappingRepository.saveAll(existingMappings);
+            ddoGstMappingRepository.saveAll(newMappings);
+
+            // 🔹 Optional batch audit logging
+//            userService.saveBulkAuditLogsAsync(
+//                    "ddo_gst_mapping",
+//                    moved.stream().map(String::valueOf).toList(),
+//                    request.getFromGstId().toString(),
+//                    request.getToGstId().toString(),
+//                    "DDO_TRANSFER",
+//                    request.getUpdatedBy()
+//            );
+
+            // ✅ Prepare response
+            Map<String, Object> result = new HashMap<>();
+            result.put("movedDDOs", moved);
+            result.put("failedDDOs", failed);
+            result.put("totalMoved", moved.size());
+
+            return new ApiResponse(
+                    TdsDdoConstant.SUCCESS,
+                    "DDO migration completed. " + moved.size() + " moved, " + failed.size() + " failed.",
+                    result
+            );
+
+        } catch (Exception e) {
+            return new ApiResponse(TdsDdoConstant.ERROR, e.getMessage(), null);
+        }
     }
 
 }

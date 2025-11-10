@@ -18,6 +18,5 @@ public class BankDetailsResponse {
     private String micrCode;
     private Integer gstId;
     private String gstName;   // ✅ New field for GST Name
-    private String status;
 }
 

@@ -9,5 +9,6 @@ import lombok.Setter;
 @Setter
 public class UserSignUpRequest {
 	private User user;
-	private Integer adminId;
+	private Integer gstInUserId;
+    private Integer gstId;
 }

@@ -24,6 +24,7 @@ public class LoginResponse {
     private String gstNumber;
     private String gstName;
     private String accountHolderName;
+    private Integer gstId;
 
     //DDO details
     private String ddoCode;

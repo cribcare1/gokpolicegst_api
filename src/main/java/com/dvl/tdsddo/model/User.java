@@ -30,7 +30,7 @@ public class User {
 	private Integer id;
 
 	@Column(name = "full_name")
-	private String fullName;
+	private String fullName;//ddoName
 
 	@Column(name = "user_name")
 	private String userName;
@@ -39,7 +39,7 @@ public class User {
 	private String password;
 
 	@Column(name = "mobile_number")
-	private String mobileNumber;
+	private String mobileNumber;//Mobile
 
 	@Column(name = "email")
 	private String email;
