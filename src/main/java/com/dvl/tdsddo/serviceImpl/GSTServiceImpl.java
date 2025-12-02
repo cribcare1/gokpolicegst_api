@@ -10,14 +10,17 @@ import com.dvl.tdsddo.request.GSTMasterRequest;
 import com.dvl.tdsddo.response.ApiResponse;
 import com.dvl.tdsddo.response.DDOGstResponse;
 import com.dvl.tdsddo.response.GSTResponse;
+import com.dvl.tdsddo.response.LoginResponse;
 import com.dvl.tdsddo.service.GSTService;
 import com.dvl.tdsddo.service.UserService;
+import com.dvl.tdsddo.util.FileServiceUtil;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.List;
@@ -32,6 +35,7 @@ public class GSTServiceImpl implements GSTService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final DdoGstMappingRepository ddoGstMappingRepository;
+    private final FileServiceUtil fileServiceUtil;
 
     @Override
     public ApiResponse saveOrUpdateGSTNew(GSTMasterRequest request) {
@@ -139,7 +143,7 @@ public class GSTServiceImpl implements GSTService {
 
     @Override
     @Transactional
-    public ApiResponse saveOrUpdateGST(GSTMasterRequest request) {
+    public ApiResponse saveOrUpdateGST(GSTMasterRequest request, MultipartFile file) {
         try {
             boolean isUpdate = request.getGstId() != null;
             GSTMaster gstMaster;
@@ -217,6 +221,11 @@ public class GSTServiceImpl implements GSTService {
             user = userRepository.save(user);
             gstMaster.setUserId(user.getId());
 
+            if(file!=null && !file.isEmpty()){
+              String fileName=  fileServiceUtil.uploadFile(file,TdsDdoConstant.GST);
+              gstMaster.setGstImage(fileName);
+            }
+
             // ===================== 🔹 SAVE GST MASTER =====================
             gstRepository.save(gstMaster);
 
@@ -233,6 +242,7 @@ public class GSTServiceImpl implements GSTService {
             res.setGstName(gstMaster.getGstName());
             res.setGstHolderName(gstMaster.getGstHolderName());
             res.setGstNumber(gstMaster.getGstNumber());
+            res.setLogo(gstMaster.getGstImage());
 
             String message = isUpdate ? "GST Master updated successfully"
                     : (existingGST != null ? "GST Master reactivated successfully" : "GST Master created successfully");

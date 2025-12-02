@@ -15,4 +15,6 @@ public class DashboardStatsResponse {
     private long totalDdo;
     private long totalGst;
     private long totalHsn;
+    private Long pendingInvoice;
+    private Long completeInvoice;
 }

@@ -14,33 +14,29 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse> handleResourceNotFound(ResourceNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        return ResponseEntity.status(HttpStatus.OK)
                 .body(new ApiResponse(TdsDdoConstant.ERROR, ex.getMessage(), null));
     }
 
     @ExceptionHandler(InvalidRequestException.class)
     public ResponseEntity<ApiResponse> handleInvalidRequest(InvalidRequestException ex) {
-        return ResponseEntity.badRequest()
-                .body(new ApiResponse(TdsDdoConstant.ERROR, ex.getMessage(), null));
+        return ResponseEntity.ok(new ApiResponse(TdsDdoConstant.ERROR, ex.getMessage(), null));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse> handleValidation(MethodArgumentNotValidException ex) {
         String message = ex.getBindingResult().getFieldError().getDefaultMessage();
-        return ResponseEntity.badRequest()
-                .body(new ApiResponse(TdsDdoConstant.ERROR, message, null));
+        return ResponseEntity.ok(new ApiResponse(TdsDdoConstant.ERROR, message, null));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse> handleAll(Exception ex) {
-        return ResponseEntity.internalServerError()
-                .body(new ApiResponse(TdsDdoConstant.ERROR, "Something went wrong: " + ex.getMessage(), null));
+        return ResponseEntity.ok(new ApiResponse(TdsDdoConstant.ERROR, "Something went wrong: " + ex.getMessage(), null));
     }
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiResponse> handleAllRunTimeException(Exception ex) {
-        return ResponseEntity.internalServerError()
-                .body(new ApiResponse(TdsDdoConstant.ERROR,  ex.getMessage(), null));
+        return ResponseEntity.ok(new ApiResponse(TdsDdoConstant.ERROR,  ex.getMessage(), null));
     }
 }
 

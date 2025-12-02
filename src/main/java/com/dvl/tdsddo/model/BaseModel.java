@@ -2,6 +2,7 @@ package com.dvl.tdsddo.model;
 
 import com.dvl.tdsddo.util.TdsUtil;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.PostUpdate;
 import jakarta.persistence.PrePersist;
 import lombok.AllArgsConstructor;
@@ -15,6 +16,7 @@ import java.time.LocalDateTime;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@MappedSuperclass
 public class BaseModel {
     @JsonIgnore
     private LocalDateTime createdDate;

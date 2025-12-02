@@ -14,7 +14,8 @@ public class HSNRequest {
     private String igst;
     private String cgst;
     private String sgst;
-    private Integer createdBy;
     private String totalGst;
+
+    private Integer createdBy;
     private Integer gstId;
 }

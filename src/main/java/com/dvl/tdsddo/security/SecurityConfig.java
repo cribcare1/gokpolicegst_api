@@ -80,11 +80,15 @@ public class SecurityConfig {
                 "https://*.netlify.app",
                 "https://app.dravinlabs.com",
                 "https://ewingstds.com",
+                "https://gokpolicegst.com",
                 "https://*.dravinlabs.com",
                 "http://localhost:3000",
                 "http://13.126.232.163:8888",
                 "http://localhost:8888",
-                "https://13.126.232.163:8443"
+                "https://13.126.232.163:8443",
+                "http://13.204.137.0:8443",
+                "https://13.204.137.0:8443",
+                "https://gokpolicegst.com:8443"
         ));
 
         config.setAllowedHeaders(List.of(

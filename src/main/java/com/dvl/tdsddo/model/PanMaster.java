@@ -1,10 +1,7 @@
 package com.dvl.tdsddo.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,6 +21,12 @@ public class PanMaster extends BaseModel{
     private String address;
     private String email;
     private String mobile;
+
+    private String pinCode;
+    private String city;
+
+    @Transient
+    private  Boolean isEditable=Boolean.TRUE;
 
     @JsonIgnore
     private Integer createdBy;

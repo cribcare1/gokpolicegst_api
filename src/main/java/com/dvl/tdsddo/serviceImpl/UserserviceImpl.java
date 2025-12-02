@@ -11,9 +11,7 @@ import java.util.stream.Stream;
 import com.dvl.tdsddo.model.AuditLog;
 import com.dvl.tdsddo.model.DdoGStMapping;
 import com.dvl.tdsddo.model.GSTMaster;
-import com.dvl.tdsddo.repository.AuditLogRepository;
-import com.dvl.tdsddo.repository.DdoGstMappingRepository;
-import com.dvl.tdsddo.repository.GSTRepository;
+import com.dvl.tdsddo.repository.*;
 import com.dvl.tdsddo.request.DdoMigrationRequest;
 import com.dvl.tdsddo.request.UserRequest;
 import com.dvl.tdsddo.response.*;
@@ -36,7 +34,6 @@ import org.springframework.stereotype.Service;
 
 import com.dvl.tdsddo.constatnt.TdsDdoConstant;
 import com.dvl.tdsddo.model.User;
-import com.dvl.tdsddo.repository.UserRepository;
 import com.dvl.tdsddo.request.AuthRequest;
 import com.dvl.tdsddo.request.EditDDORequest;
 import com.dvl.tdsddo.security.JwtService;
@@ -68,6 +65,9 @@ public class UserserviceImpl implements UserService {
 
 	@Autowired
 	private JwtService jwtService;
+    @Autowired
+    BankDetailsRepository bankDetailsRepository;
+
 
 	@Autowired
 	private AuthenticationManager authenticationManager;
@@ -248,8 +248,20 @@ public class UserserviceImpl implements UserService {
 			if (user.getRole() != null && user.getRole().equalsIgnoreCase("ddo")) {
 				//DashBoardresponse dashBoardresponse = viewDashBoard(user.getDdoTan());
 				// Build LoginResponse
+
+              DDOGstResponse response=  ddoGstMappingRepository.findActiveGstByDdoId(user.getId()).orElse(null);
+
 				loginResponse = new LoginResponse(user.getId(), user.getFullName(), user.getUserName(),
-						user.getMobileNumber(), user.getEmail(), user.getRole(), token, user.getCity(),user.getAddress(),user.getPinCode(),null,null,null,null,user.getDdoCode());
+						user.getMobileNumber(), user.getEmail(), user.getRole(), token, user.getCity(),user.getAddress(),user.getPinCode(),null,null,null,null,user.getDdoCode(), user.getArea(),user.getDdoTan(),user.getTanGstIn(),null);
+                if (response!=null){
+                    loginResponse.setGstName(response.getGstName());
+                    loginResponse.setGstNumber(response.getGstNumber());
+                    loginResponse.setGstId(response.getCurrentGstId());
+                    if(response.getCurrentGstId()!=null){
+                        BankDetailsResponse res=bankDetailsRepository.findActiveBankByGstId(response.getCurrentGstId());
+                        loginResponse.setBankDetailsResponse(res);
+                    }
+                }
 			}
 
             if (user.getRole() != null && user.getRole().equalsIgnoreCase("gstin")) {
@@ -258,10 +270,10 @@ public class UserserviceImpl implements UserService {
                 // Build LoginResponse
                 if(gm!=null){
                     loginResponse = new LoginResponse(user.getId(), user.getFullName(), user.getUserName(),
-                            user.getMobileNumber(), user.getEmail(), user.getRole(), token, user.getCity(),user.getAddress(),user.getPinCode(), gm.getGstNumber(), gm.getGstName(),gm.getGstHolderName(),gm.getId(),user.getDdoCode());
+                            user.getMobileNumber(), user.getEmail(), user.getRole(), token, user.getCity(),user.getAddress(),user.getPinCode(), gm.getGstNumber(), gm.getGstName(),gm.getGstHolderName(),gm.getId(),user.getDdoCode(),user.getArea(),null,null,null);
                 }else
                 loginResponse = new LoginResponse(user.getId(), user.getFullName(), user.getUserName(),
-                        user.getMobileNumber(), user.getEmail(), user.getRole(), token, user.getCity(),user.getAddress(),user.getPinCode(),null,null,null,null,user.getDdoCode());
+                        user.getMobileNumber(), user.getEmail(), user.getRole(), token, user.getCity(),user.getAddress(),user.getPinCode(),null,null,null,null,user.getDdoCode(),user.getArea(),null,null,null);
             }
 
 			if (user.getRole() != null && user.getRole().equalsIgnoreCase("admin")) {
@@ -270,7 +282,7 @@ public class UserserviceImpl implements UserService {
 
 				// Build LoginResponse
 				loginResponse = new LoginResponse(user.getId(), user.getFullName(), user.getUserName(),
-						user.getMobileNumber(), user.getEmail(), user.getRole(), token,user.getCity(),user.getAddress(),user.getPinCode(),null,null,null,null,null);
+						user.getMobileNumber(), user.getEmail(), user.getRole(), token,user.getCity(),user.getAddress(),user.getPinCode(),null,null,null,null,null,user.getArea(),null,null,null);
 			}
 
 			return Map.of("message", "You have logged in successfully.", "login_response", loginResponse, "status",
@@ -335,6 +347,7 @@ public Map<String, Object> createUserWithAdminCheck(UserRequest userRequest) {
     try {
         // ✅ 1️⃣ Create new user object
         User user = new User();
+        LoginResponse loginResponse= new LoginResponse();
 
         // ✅ 2️⃣ Admin (GSTIN) validation
         if (userRequest.getGstInUserId() != null) {
@@ -363,6 +376,14 @@ public Map<String, Object> createUserWithAdminCheck(UserRequest userRequest) {
             );
         }
 
+
+        if (userRequest.getDdoTan() != null && userRepository.existsByDdoTanAndStatus(userRequest.getDdoTan(),TdsDdoConstant.ACTIVE)) {
+            return Map.of(
+                    TdsDdoConstant.MESSAGE, "DDO TAN already exists",
+                    TdsDdoConstant.STATUS, TdsDdoConstant.ERROR
+            );
+        }
+
         // ✅ 4️⃣ Copy basic fields
         user.setFullName(userRequest.getDdoName());
         user.setUserName(userRequest.getDdoCode());
@@ -373,6 +394,9 @@ public Map<String, Object> createUserWithAdminCheck(UserRequest userRequest) {
         user.setAddress(userRequest.getAddress());
         user.setPinCode(userRequest.getPinCode());
         user.setCity(userRequest.getCity());
+        user.setArea(userRequest.getArea());
+        user.setDdoTan(userRequest.getDdoTan());
+        user.setTanGstIn(userRequest.getTanGstIn());
 
         // ✅ 5️⃣ Default values
         user.setRole("DDO");
@@ -389,7 +413,27 @@ public Map<String, Object> createUserWithAdminCheck(UserRequest userRequest) {
 
         // ✅ 6️⃣ Save user
         User savedUser = userRepository.save(user);
-
+        DDOGstResponse response=  ddoGstMappingRepository.findActiveGstByDdoId(user.getId()).orElse(null);
+           loginResponse = new LoginResponse(savedUser.getId(), savedUser.getFullName(), user.getUserName(),
+                savedUser.getMobileNumber(), user.getEmail(), user.getRole(), null, user.getCity(),user.getAddress(),user.getPinCode(),null,null,null,null,user.getDdoCode(), user.getArea(),user.getDdoTan(),user.getTanGstIn(),null);
+        if (response!=null){
+            loginResponse.setGstName(response.getGstName());
+            loginResponse.setGstNumber(response.getGstNumber());
+            loginResponse.setGstId(response.getCurrentGstId());
+            if(response.getCurrentGstId()!=null){
+                BankDetailsResponse res=bankDetailsRepository.findActiveBankByGstId(response.getCurrentGstId());
+                loginResponse.setBankDetailsResponse(res);
+            }
+        }
+//
+        loginResponse.setUserId(savedUser.getId());
+        loginResponse.setEmail(savedUser.getEmail());
+        loginResponse.setCity(savedUser.getCity());
+        loginResponse.setAddress(savedUser.getAddress());
+        loginResponse.setDdoCode(savedUser.getDdoCode());
+        loginResponse.setFullName(savedUser.getFullName());
+        loginResponse.setPinCode(savedUser.getPinCode());
+        loginResponse.setArea(savedUser.getArea());
         // ✅ 7️⃣ GST mapping
         if (userRequest.getGstId() != null) {
             // Check if this DDO already mapped
@@ -420,7 +464,7 @@ public Map<String, Object> createUserWithAdminCheck(UserRequest userRequest) {
         return Map.of(
                 TdsDdoConstant.MESSAGE, "DDO user created and mapped successfully",
                 TdsDdoConstant.STATUS, TdsDdoConstant.SUCCESS,
-                "userId", savedUser.getId()
+                TdsDdoConstant.LOGIN_RESPONSE,loginResponse
         );
 
     } catch (Exception e) {
@@ -472,6 +516,17 @@ public Map<String, Object> createUserWithAdminCheck(UserRequest userRequest) {
                 existingUser.setMobileNumber(userRequest.getMobile());
             }
 
+
+            if (userRequest.getDdoTan() != null) {
+                // Check for duplicate mobile
+                if (userRepository.existsByDdoTanAndStatusAndIdNot(userRequest.getDdoTan(), TdsDdoConstant.ACTIVE,existingUser.getId())) {
+                    return Map.of(
+                            TdsDdoConstant.MESSAGE, "Ddo TAN number already exists",
+                            TdsDdoConstant.STATUS, TdsDdoConstant.ERROR
+                    );
+                }
+                existingUser.setDdoTan(userRequest.getDdoTan());
+            }
             if (userRequest.getEmail() != null)
                 existingUser.setEmail(userRequest.getEmail());
 
@@ -491,6 +546,12 @@ public Map<String, Object> createUserWithAdminCheck(UserRequest userRequest) {
 
             if (userRequest.getAddress() != null)
                 existingUser.setAddress(userRequest.getAddress());
+
+            if(userRequest.getTanGstIn()!=null){
+                existingUser.setTanGstIn(userRequest.getTanGstIn());
+            }
+            if (userRequest.getArea() != null)
+                existingUser.setArea(userRequest.getArea());
 
             if (userRequest.getPinCode() != null)
                 existingUser.setPinCode(userRequest.getPinCode());
@@ -522,12 +583,27 @@ public Map<String, Object> createUserWithAdminCheck(UserRequest userRequest) {
                     ddoGstMappingRepository.save(newMapping);
                 }
             }
+            User user=existingUser;
 
+            DDOGstResponse response=  ddoGstMappingRepository.findActiveGstByDdoId(user.getId()).orElse(null);
+            LoginResponse   loginResponse = new LoginResponse(user.getId(), user.getFullName(), user.getUserName(),
+                    user.getMobileNumber(), user.getEmail(), user.getRole(), null, user.getCity(),user.getAddress(),user.getPinCode(),null,null,null,null,user.getDdoCode(), user.getArea(),user.getDdoTan(),user.getTanGstIn(),null);
+            if (response!=null){
+                loginResponse.setGstName(response.getGstName());
+                loginResponse.setGstNumber(response.getGstNumber());
+                loginResponse.setGstId(response.getCurrentGstId());
+                if(response.getCurrentGstId()!=null){
+                    BankDetailsResponse res=bankDetailsRepository.findActiveBankByGstId(response.getCurrentGstId());
+                    loginResponse.setBankDetailsResponse(res);
+                }
+            }
+//            LoginResponse  loginResponse = new LoginResponse(updatedUser.getId(), updatedUser.getFullName(), updatedUser.getUserName(),
+//                  updatedUser.getMobileNumber(), updatedUser.getEmail(), updatedUser.getRole(), null, updatedUser.getCity(),updatedUser.getAddress(),updatedUser.getPinCode(),null,null,null,null,updatedUser.getDdoCode(),updatedUser.getArea(),updatedUser.getDdoTan(),updatedUser.getTanGstIn(),null);
             // ✅ 7️⃣ Success Response
             return Map.of(
                     TdsDdoConstant.MESSAGE, "DDO user updated successfully",
                     TdsDdoConstant.STATUS, TdsDdoConstant.SUCCESS,
-                    "userId", updatedUser.getId()
+                    TdsDdoConstant.LOGIN_RESPONSE, updatedUser.getId()
             );
 
         } catch (Exception e) {
@@ -1142,6 +1218,7 @@ public Map<String, Object> createUserWithAdminCheck(UserRequest userRequest) {
     @Override
     public Map<String, Object> editAdmin(User updatedUser) {
         Map<String, Object> response = new HashMap<>();
+            LoginResponse loginResponse= new LoginResponse();
 
         // ✅ Validate input
         if (updatedUser.getId() == null) {
@@ -1234,9 +1311,18 @@ public Map<String, Object> createUserWithAdminCheck(UserRequest userRequest) {
         // ✅ Save updates
         User savedUser = userRepository.save(existingUser);
 
+        loginResponse.setUserId(savedUser.getId());
+        loginResponse.setUserName(savedUser.getUserName());
+        loginResponse.setRole(savedUser.getRole());
+        loginResponse.setCity(savedUser.getCity());
+        loginResponse.setAddress(savedUser.getAddress());
+        loginResponse.setEmail(savedUser.getEmail());
+        loginResponse.setMobileNumber(savedUser.getMobileNumber());
+        loginResponse.setFullName( savedUser.getFullName());
+        loginResponse.setPinCode(savedUser.getPinCode());
         response.put(TdsDdoConstant.MESSAGE, "Admin updated successfully");
         response.put(TdsDdoConstant.STATUS, TdsDdoConstant.SUCCESS);
-        response.put("userId", savedUser.getId());
+        response.put(TdsDdoConstant.LOGIN_RESPONSE, loginResponse);
 
         return response;
     }
@@ -1324,4 +1410,29 @@ public Map<String, Object> createUserWithAdminCheck(UserRequest userRequest) {
         }
     }
 
+
+
+    @Override
+    public ApiResponse getDashboardStats(Integer gstId) {
+        try {
+            DashboardStatsResponse stats=null;
+            if(gstId!=null){
+                stats=userRepository.getDashboardStatsByGst(gstId);
+            }else
+             stats = userRepository.getActiveDashboardCounts();
+
+            if (stats == null) {
+                return new ApiResponse("error", "No dashboard data found", null);
+            }
+
+            return new ApiResponse("success", "Dashboard stats fetched successfully", stats);
+        } catch (Exception e) {
+            return new ApiResponse("error", "Failed to fetch dashboard stats: " + e.getMessage(), null);
+        }
+    }
+    @Override
+    public DDOCurrentGstResponse getCurrentGstOfDdo(Integer ddoId) {
+        return userRepository.findCurrentGstByDdoId(ddoId)
+                .orElseThrow(() -> new RuntimeException("No active GST found for DDO ID " + ddoId));
+    }
 }

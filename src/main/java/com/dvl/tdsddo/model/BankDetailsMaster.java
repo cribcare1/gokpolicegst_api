@@ -41,6 +41,15 @@ public class BankDetailsMaster extends BaseModel {
     @Column(name = "gst_id")
     private Integer gstId;
 
+    private Integer ddoId;
+    private String addedBy;
+
+    // 🟢 Relation (Many banks can be linked to one GST)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JsonIgnore
+    @JoinColumn(name = "gst_id", insertable = false, updatable = false)
+    private GSTMaster gstMaster;
+
     @Column(name = "status", columnDefinition = "TEXT")
     @JsonIgnore
     private String status;
@@ -69,4 +78,15 @@ public class BankDetailsMaster extends BaseModel {
 //            ifscCode = util.decrypt(ifscCode.substring(4, ifscCode.length() - 1));
 //        }
 //    }
+
+    // 🟢 Not a DB column — computed/transient field
+    @Transient
+    private String gstNumber;
+
+    @PostLoad
+    private void fillTransientFields() {
+        if (gstMaster != null) {
+            this.gstNumber = gstMaster.getGstNumber();
+        }
+    }
 }

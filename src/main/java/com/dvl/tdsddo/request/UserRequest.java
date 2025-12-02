@@ -28,6 +28,8 @@ public class UserRequest {
 
     private String address;
 
+    private String area;
+
     @Pattern(regexp = "^[0-9]{6}$", message = "PIN code must be 6 digits")
     private String pinCode;
 
@@ -35,6 +37,9 @@ public class UserRequest {
 
     private Integer gstInUserId;
     private Integer gstId;
+
+    private String ddoTan;
+    private String tanGstIn;
 
 }
 

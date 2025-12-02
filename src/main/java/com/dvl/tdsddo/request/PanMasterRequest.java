@@ -35,6 +35,9 @@ public class PanMasterRequest {
 
     private String mobile;
 
+    private String pinCode;
+    private String city;
+
     private String status = TdsDdoConstant.ACTIVE;
 
 //    @NotNull(message = "CreatedBy user id is required")

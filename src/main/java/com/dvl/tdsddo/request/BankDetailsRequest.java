@@ -17,5 +17,6 @@ public class BankDetailsRequest {
     private String status;
     private Integer gstId;
     private Integer createdBy;
+    private Integer ddoId;
 }
 

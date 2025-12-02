@@ -28,6 +28,10 @@ public class GSTMaster extends BaseModel {
     @Column(name = "gst_name", nullable = false, length = 150)
     private String gstName;
 
+    private String gstImage;
+
+    private Integer panId;
+
     @Column(name = "gst_holder_name")
     private String gstHolderName;
 

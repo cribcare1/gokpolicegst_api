@@ -5,6 +5,7 @@ import java.util.Map;
 import com.dvl.tdsddo.request.DdoMigrationRequest;
 import com.dvl.tdsddo.request.UserRequest;
 import com.dvl.tdsddo.response.ApiResponse;
+import com.dvl.tdsddo.response.DDOCurrentGstResponse;
 import org.springframework.stereotype.Service;
 
 import com.dvl.tdsddo.model.User;
@@ -44,6 +45,10 @@ public interface UserService {
                                   String actionType, Integer updatedBy);
 
     public Map<String, Object> editAdmin(User updatedUser);
+    public ApiResponse getDashboardStats(Integer gstId);
 
     public ApiResponse migrateDdosBetweenGsts(DdoMigrationRequest request);
+
+
+    public DDOCurrentGstResponse getCurrentGstOfDdo(Integer ddoId);
 }

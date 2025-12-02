@@ -56,4 +56,6 @@ public class GSTMasterRequest {
 
     // 🔹 Created By (Admin ID)
     private Integer createdBy;
+
+    private Integer panId;
 }

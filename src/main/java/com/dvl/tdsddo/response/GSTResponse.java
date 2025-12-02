@@ -22,4 +22,5 @@ public class GSTResponse {
     private String gstName;
     private Integer ddoCount ;
     private Integer stateCode;
+    private String logo;
 }

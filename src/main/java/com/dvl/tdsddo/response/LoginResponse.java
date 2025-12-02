@@ -28,4 +28,11 @@ public class LoginResponse {
 
     //DDO details
     private String ddoCode;
+    private String area;
+
+    private String ddoTan;
+    private String tanGstIn;
+
+    private BankDetailsResponse bankDetailsResponse;
+
 }

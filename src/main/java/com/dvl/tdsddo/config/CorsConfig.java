@@ -15,8 +15,8 @@ public class CorsConfig {
 			public void addCorsMappings(CorsRegistry registry) {
 				registry.addMapping("/**")
 						.allowedOriginPatterns("https://*.netlify.app", "https://app.dravinlabs.com",
-								"https://ewingstds.com", "https://*.dravinlabs.com", // if applicable via Cloudflare
-								"http://localhost:3000", "http://13.126.232.163:8888", "https://13.126.232.163:8443","https://localhost:8443")
+								"https://ewingstds.com","https://gokpolicegst.com", "https://*.dravinlabs.com", // if applicable via Cloudflare
+								"http://localhost:3000", "http://13.126.232.163:8888", "https://13.126.232.163:8443","https://localhost:8443","http://13.204.137.0:8443","https://gokpolicegst.com:8443")
 						.allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
 						.allowedHeaders("Authorization", "Content-Type", "Accept").exposedHeaders("Authorization")
 						.allowCredentials(true);

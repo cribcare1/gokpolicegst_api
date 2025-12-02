@@ -8,5 +8,7 @@ import org.springframework.stereotype.Service;
 public interface BankService {
   public ApiResponse saveOrUpdateBank(BankDetailsRequest request);
     ApiResponse deleteBank(Integer bankId, Integer updatedBy);
-    ApiResponse getAllActiveBankDetails(Integer gstId);
+    ApiResponse getAllActiveBankDetails(Integer gstId,Integer ddoId);
+
+    public ApiResponse saveOrUpdateBankNew(BankDetailsRequest request);
 }

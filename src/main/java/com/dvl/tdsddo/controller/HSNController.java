@@ -26,23 +26,32 @@ public class HSNController {
     }
 
     // 🔹 Delete HSN by ID (soft delete)
-    @PostMapping("/delete/{id}/{updatedBy}")
+    @PostMapping("/delete/{id}")
     public ResponseEntity<ApiResponse> deleteHSN(@PathVariable Integer id,
-                                                 @PathVariable Integer updatedBy) {
+                                                 @RequestParam(required = false) Integer updatedBy) {
         ApiResponse response = hsnService.deleteHSN(id, updatedBy);
         if (TdsDdoConstant.SUCCESS.equals(response.getStatus())) {
             return ResponseEntity.ok(response);
         }
-        return ResponseEntity.badRequest().body(response);
+        return ResponseEntity.ok(response);
     }
 
     // 🔹 Get All Active HSN records
     @GetMapping("/getAllHSN")
-    public ResponseEntity<ApiResponse> getAllHSN() {
-        ApiResponse response = hsnService.getAllHSN();
+    public ResponseEntity<ApiResponse> getAllHSN(@RequestParam(required = false) Integer gstId) {
+        ApiResponse response = hsnService.getAllHSN(gstId);
         if (TdsDdoConstant.SUCCESS.equals(response.getStatus())) {
             return ResponseEntity.ok(response);
         }
-        return ResponseEntity.badRequest().body(response);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/getAllHSNHistory/{hsnId}")
+    public ResponseEntity<ApiResponse> getAllHSNHistory(@PathVariable Integer hsnId) {
+        ApiResponse response = hsnService.getHsnGstHistory(hsnId);
+        if (TdsDdoConstant.SUCCESS.equals(response.getStatus())) {
+            return ResponseEntity.ok(response);
+        }
+        return ResponseEntity.ok(response);
     }
 }

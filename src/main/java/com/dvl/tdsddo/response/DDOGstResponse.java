@@ -16,4 +16,8 @@ public interface  DDOGstResponse{
     String getGstName();
     String getGstNumber();
     String getPinCode();
+    String getArea();
+    String getIsEditable();
+    String getDdoTan();
+    String getTanGstIn();
 }

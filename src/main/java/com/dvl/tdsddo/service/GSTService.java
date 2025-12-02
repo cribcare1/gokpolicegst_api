@@ -3,6 +3,7 @@ package com.dvl.tdsddo.service;
 import com.dvl.tdsddo.request.GSTMasterRequest;
 import com.dvl.tdsddo.response.ApiResponse;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
@@ -13,7 +14,7 @@ public interface GSTService {
     public ApiResponse getAllGSTDetails(String status);
 
 
-    public ApiResponse saveOrUpdateGST(GSTMasterRequest request);
+    public ApiResponse saveOrUpdateGST(GSTMasterRequest request, MultipartFile file);
 
     public ApiResponse getAllActiveGstDetails();
 

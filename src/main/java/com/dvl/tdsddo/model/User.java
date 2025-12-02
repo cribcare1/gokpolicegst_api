@@ -50,6 +50,9 @@ public class User {
 	@Column(name = "ddo_tan")
 	private String ddoTan;
 
+    @Column(name = "tan_gst_in")
+    private String tanGstIn;
+
 	@Column(name = "ddo_code")
 	private String ddoCode;
 
@@ -63,6 +66,8 @@ public class User {
 
 	@Column(name = "pin")
 	private String pinCode;
+
+    private String area;
 
     @Column(name = "city")
     private String city;

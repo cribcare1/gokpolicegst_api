@@ -3,6 +3,7 @@ package com.dvl.tdsddo.serviceImpl;
 import com.dvl.tdsddo.constatnt.TdsDdoConstant;
 import com.dvl.tdsddo.model.PanMaster;
 import com.dvl.tdsddo.repository.AuditLogRepository;
+import com.dvl.tdsddo.repository.GSTRepository;
 import com.dvl.tdsddo.repository.PanMasterRepository;
 import com.dvl.tdsddo.request.PanMasterRequest;
 import com.dvl.tdsddo.response.ApiResponse;
@@ -22,6 +23,7 @@ public class PanServiceImpl implements PanService {
     private  final PanMasterRepository panMasterRepository;
     private final AuditLogRepository auditLogRepository;
     private final UserService userService;
+    private final GSTRepository gstRepository;
 //    @Override
 //    @Transactional
 //    public ApiResponse saveOrUpdatePan(PanMasterRequest request) {
@@ -170,6 +172,17 @@ public class PanServiceImpl implements PanService {
                     panMaster.setAddress(request.getAddress());
                 }
 
+                if (request.getCity() != null && !request.getCity().equals(panMaster.getCity())) {
+                    userService.saveAuditLog("pan_master", panMaster.getId().toString(), "city",
+                            panMaster.getCity(), request.getCity(), "UPDATE", request.getCreatedBy());
+                    panMaster.setCity(request.getCity());
+                }
+
+                if (request.getPinCode() != null && !request.getPinCode().equals(panMaster.getPinCode())) {
+                    userService.saveAuditLog("pan_master", panMaster.getId().toString(), "pinCode",
+                            panMaster.getPinCode(), request.getPinCode(), "UPDATE", request.getCreatedBy());
+                    panMaster.setPinCode(request.getPinCode());
+                }
                 panMaster.setUpdateBy(request.getCreatedBy());
                 PanMaster updated = panMasterRepository.save(panMaster);
 
@@ -198,6 +211,8 @@ public class PanServiceImpl implements PanService {
                 panMaster.setPanNumber(request.getPanNumber());
                 panMaster.setEmail(request.getEmail());
                 panMaster.setMobile(request.getMobile());
+                panMaster.setCity(request.getCity());
+                panMaster.setPinCode(request.getPinCode());
                 panMaster.setAddress(request.getAddress());
                 panMaster.setCreatedBy(request.getCreatedBy());
                 panMaster.setStatus(TdsDdoConstant.ACTIVE);
@@ -211,7 +226,6 @@ public class PanServiceImpl implements PanService {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
             return new ApiResponse(TdsDdoConstant.ERROR, "Operation failed: " + e.getMessage(), null);
         }
     }
@@ -244,12 +258,42 @@ public class PanServiceImpl implements PanService {
         }
     }
 
+ //   @Override
+//    public ApiResponse getAllPanDetails(String status) {
+//        try {
+//            List<PanMaster> panList;
+//
+//            // === Fetch based on status ===
+//            if (status != null && !status.isEmpty()) {
+//                if (status.equalsIgnoreCase(TdsDdoConstant.ALL)) {
+//                    panList = panMasterRepository.findAll();
+//                } else {
+//                    panList = panMasterRepository.findByStatusIgnoreCase(status);
+//                }
+//            } else {
+//                // default: only ACTIVE
+//                panList = panMasterRepository.findByStatusIgnoreCase(TdsDdoConstant.ACTIVE);
+//            }
+//
+//            if (panList.isEmpty()) {
+//                return new ApiResponse(TdsDdoConstant.ERROR, "No PAN records found", null);
+//            }
+//
+//            return new ApiResponse(TdsDdoConstant.SUCCESS, "List of PAN records fetched successfully", panList);
+//
+//        } catch (Exception e) {
+//            return new ApiResponse(TdsDdoConstant.ERROR, "Error fetching PAN records: " + e.getMessage(), null);
+//        }
+//    }
+
+
     @Override
     public ApiResponse getAllPanDetails(String status) {
         try {
+
             List<PanMaster> panList;
 
-            // === Fetch based on status ===
+            // === Fetch PANs based on status ===
             if (status != null && !status.isEmpty()) {
                 if (status.equalsIgnoreCase(TdsDdoConstant.ALL)) {
                     panList = panMasterRepository.findAll();
@@ -257,12 +301,20 @@ public class PanServiceImpl implements PanService {
                     panList = panMasterRepository.findByStatusIgnoreCase(status);
                 }
             } else {
-                // default: only ACTIVE
                 panList = panMasterRepository.findByStatusIgnoreCase(TdsDdoConstant.ACTIVE);
             }
 
             if (panList.isEmpty()) {
                 return new ApiResponse(TdsDdoConstant.ERROR, "No PAN records found", null);
+            }
+
+            // === 1 QUERY: Get all PAN IDs that have ACTIVE GST ===
+            List<Integer> panIdsWithActiveGST = gstRepository.findAllPanIdsWithActiveGST();
+
+            // === Set isEditable for each PAN ===
+            for (PanMaster pan : panList) {
+                boolean hasActiveGst = panIdsWithActiveGST.contains(pan.getId());
+                pan.setIsEditable(!hasActiveGst);  // Active GST → not editable
             }
 
             return new ApiResponse(TdsDdoConstant.SUCCESS, "List of PAN records fetched successfully", panList);

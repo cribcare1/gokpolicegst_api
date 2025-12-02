@@ -33,7 +33,8 @@ public interface GSTRepository extends JpaRepository<GSTMaster,Integer> {
             g.gstHolderName,
             g.gstName,
              CAST(COUNT(d.id) AS int),
-             g.stateCode
+             g.stateCode,
+             g.gstImage
         )
         FROM GSTMaster g
          JOIN User u ON u.id = g.userId
@@ -45,4 +46,7 @@ public interface GSTRepository extends JpaRepository<GSTMaster,Integer> {
         ORDER BY g.gstName
         """)
     List<GSTResponse> findAllActiveGstWithUserAndDdoCount();
+
+    @Query("SELECT g.panId FROM GSTMaster g WHERE g.status = 'active'")
+    List<Integer> findAllPanIdsWithActiveGST();
 }
