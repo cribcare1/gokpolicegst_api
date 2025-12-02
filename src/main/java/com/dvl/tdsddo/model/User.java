@@ -30,7 +30,7 @@ public class User {
 	private Integer id;
 
 	@Column(name = "full_name")
-	private String fullName;
+	private String fullName;//ddoName
 
 	@Column(name = "user_name")
 	private String userName;
@@ -39,7 +39,7 @@ public class User {
 	private String password;
 
 	@Column(name = "mobile_number")
-	private String mobileNumber;
+	private String mobileNumber;//Mobile
 
 	@Column(name = "email")
 	private String email;
@@ -50,6 +50,9 @@ public class User {
 	@Column(name = "ddo_tan")
 	private String ddoTan;
 
+    @Column(name = "tan_gst_in")
+    private String tanGstIn;
+
 	@Column(name = "ddo_code")
 	private String ddoCode;
 
@@ -59,8 +62,15 @@ public class User {
 	@Column(name = "responsible_person")
 	private String responsiblePerson;
 
+    private String address;
+
 	@Column(name = "pin")
-	private String pin;
+	private String pinCode;
+
+    private String area;
+
+    @Column(name = "city")
+    private String city;
 
 	@Column(name = "role")
 	private String role;
@@ -79,7 +89,7 @@ public class User {
 
 	@ManyToOne
 	@JoinColumn(name = "admin_id") // Foreign key reference to Admin user
-	private User admin;
+	private User createdBy;
 
 	@PrePersist
 	protected void onCreate() {

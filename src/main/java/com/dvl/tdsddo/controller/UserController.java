@@ -2,7 +2,11 @@ package com.dvl.tdsddo.controller;
 
 import java.util.Map;
 
+import com.dvl.tdsddo.model.User;
+import com.dvl.tdsddo.request.UserRequest;
+import com.dvl.tdsddo.response.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,10 +27,31 @@ public class UserController {
 	@Autowired
 	private UserService userService;
 
-	@PostMapping("/addDDOByAdmin")
-	public Map<String, Object> addDDOByAdmin(@RequestBody UserSignUpRequest user) {
-		return userService.createUserWithAdminCheck(user.getUser(), user.getAdminId());
+	@PostMapping("/addDDOByGSTIN")
+	public Map<String, Object> addDDOByAdmin(@RequestBody UserRequest user) {
+        if(user!=null && user.getId()!=null){
+            return  userService.updateUserWithPartialFields(user);
+        }
+		return userService.createUserWithAdminCheck(user);
 	}
+
+    @GetMapping("/getDashboardStats")
+    public ResponseEntity<ApiResponse> getDashboardStats( @RequestParam(required = false) Integer gstId) {
+        ApiResponse response = userService.getDashboardStats(gstId);
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(response);
+    }
+
+    @PostMapping("/delete-ddo/{userId}")
+    public Map<String, Object> deleteDdoById( @PathVariable Integer ddoUserId){
+        return userService.deleteDdoById(ddoUserId);
+    }
+
+//    @PostMapping("/addDDOByGSTIN")
+//    public Map<String, Object> addDDOByAdmin(@RequestBody UserRequest user) {
+//        return userService.createUserWithAdminCheck(user);
+//    }
 
 	@GetMapping("/getAllDDOByAdmin")
 	public Map<String, Object> getAllDDOByAdmin(@RequestParam Integer adminId,
@@ -57,5 +82,18 @@ public class UserController {
 		Map<String, Object> response = userService.editDdoDetails(ddoId, request);
 		return ResponseEntity.ok(response);
 	}
+
+
+        @PostMapping("/editAdmin")
+    public ResponseEntity<Map<String, Object>> editAdmin(
+                                                       @RequestBody User request) {
+        Map<String, Object> response = userService.editAdmin( request);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/getCurrentGstOfDdo")
+    public ResponseEntity<?> getCurrentGstOfDdo(@RequestParam  Integer ddoId){
+        return ResponseEntity.ok(userService.getCurrentGstOfDdo(ddoId));
+    }
 
 }

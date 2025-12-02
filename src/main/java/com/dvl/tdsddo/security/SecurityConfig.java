@@ -19,81 +19,121 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.filter.CorsFilter;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
 
-	@Autowired
-	private JwtRequestFilter jwtRequestFilter;
+    @Autowired
+    private JwtRequestFilter jwtRequestFilter;
 
-	@Autowired
-	UserDetailsService userDetailsService;
+    @Autowired
+    private UserDetailsService userDetailsService;
 
-	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-		http.cors().and() // ✅ Apply CORS configuration
-				.csrf().disable().authorizeHttpRequests()
-				.requestMatchers("/tds/auth/**", "/tds/form16/downloadPDF/*", "/tds/form16/downloadPDFFinancialYear/*",
-						"/cribCare/api/user/checkTheUserNameAvailability",
-						"/cribCare/api/user/sentAdminRegistrationRequest",
-						"/cribCare/api/user/findAllPendingApprovalList", "/cribCare/api/user/registerAdminToUserTable",
-						"/cribCare/api/section/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
-				.permitAll().anyRequest().authenticated().and().sessionManagement()
-				.sessionCreationPolicy(SessionCreationPolicy.STATELESS);
+    /**
+     * ✅ Modern SecurityFilterChain configuration (Spring Security 6+)
+     */
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
-		// ✅ Ensure JWT filter is applied after CORS and before authentication
-		http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
+        http
+                // ✅ Disable CSRF and enable CORS using new lambda syntax
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                // ✅ Authorize requests
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/tds/auth/**",
+                                "/tds/form16/downloadPDF/*",
+                                "/tds/form16/downloadPDFFinancialYear/*",
+                                "/cribCare/api/user/checkTheUserNameAvailability",
+                                "/cribCare/api/user/sentAdminRegistrationRequest",
+                                "/cribCare/api/user/findAllPendingApprovalList",
+                                "/cribCare/api/user/registerAdminToUserTable",
+                                "/cribCare/api/section/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
+                        ).permitAll()
+                        .anyRequest().authenticated()
+                )
+                // ✅ Stateless session for JWT
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // ✅ Add JWT filter before UsernamePasswordAuthenticationFilter
+                .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
-		return http.build();
-	}
+        return http.build();
+    }
 
-	@Bean
-	public CorsFilter corsFilter() {
-		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-		CorsConfiguration config = new CorsConfiguration();
-		config.setAllowCredentials(true);
+    /**
+     * ✅ CORS configuration (replaces deprecated .cors().and())
+     */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowCredentials(true);
 
-		// Allow all origins or specify allowed origins (frontend URLs)
-//		config.setAllowedOrigins(
-//				List.of("http://localhost:3000", "http://13.126.232.163:8888", "https://13.126.232.163:8443", "https://app.dravinlabs.com:8443"));
-		config.setAllowedOriginPatterns(List.of("https://*.netlify.app", "https://app.dravinlabs.com",
-				"https://ewingstds.com", "https://*.dravinlabs.com", "http://localhost:3000",
-				"http://13.126.232.163:8888", "https://13.126.232.163:8443"));
-//		config.setAllowedOriginPatterns(List.of("*"));  // Allows all origins and ports
+        config.setAllowedOriginPatterns(List.of(
+                "https://*.netlify.app",
+                "https://app.dravinlabs.com",
+                "https://ewingstds.com",
+                "https://gokpolicegst.com",
+                "https://*.dravinlabs.com",
+                "http://localhost:3000",
+                "http://13.126.232.163:8888",
+                "http://localhost:8888",
+                "https://13.126.232.163:8443",
+                "http://13.204.137.0:8443",
+                "https://13.204.137.0:8443",
+                "https://gokpolicegst.com:8443"
+        ));
 
-		// Allow all headers, including Authorization
-		config.setAllowedHeaders(List.of("Authorization", "Cache-Control", "Content-Type", "Accept"));
+        config.setAllowedHeaders(List.of(
+                "Authorization",
+                "Cache-Control",
+                "Content-Type",
+                "Accept"
+        ));
 
-		// Allow necessary HTTP methods
-		config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of(
+                "GET", "POST", "PUT", "DELETE", "OPTIONS"
+        ));
 
-		// Allow Authorization headers
-		config.setExposedHeaders(List.of("Authorization"));
+        config.setExposedHeaders(List.of("Authorization"));
 
-		source.registerCorsConfiguration("/**", config);
-		return new CorsFilter(source);
-	}
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
 
-	@Bean
-	public PasswordEncoder passwordEncoder() {
-		return new BCryptPasswordEncoder(); // Use BCrypt password encoder
-	}
+    /**
+     * ✅ Password encoder bean
+     */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
-	@Bean
-	public AuthenticationProvider authenticationProvider() {
-		DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider();
-		authenticationProvider.setUserDetailsService(userDetailsService); // Set user details service
-		authenticationProvider.setPasswordEncoder(passwordEncoder()); // Set password encoder
-		return authenticationProvider;
-	}
+    /**
+     * ✅ Authentication provider bean
+     */
+    @Bean
+    public AuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider();
+        authenticationProvider.setUserDetailsService(userDetailsService);
+        authenticationProvider.setPasswordEncoder(passwordEncoder());
+        return authenticationProvider;
+    }
 
-	@Bean
-	public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration)
-			throws Exception {
-		return authenticationConfiguration.getAuthenticationManager(); // Configure the authentication manager
-	}
+    /**
+     * ✅ Authentication manager bean
+     */
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
+    }
 }

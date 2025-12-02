@@ -8,6 +8,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,7 +25,7 @@ public class FileServiceUtil {
 
 	public String uploadFile(MultipartFile file, String fileType) throws IOException {
 		String fileName = file.getOriginalFilename();
-		if (fileType.equals(TdsDdoConstant.FORM16)) {
+		if (fileType.equals(TdsDdoConstant.GST)) {
 			// Get current date and time
 			LocalDateTime now = LocalDateTime.now();
 
@@ -64,10 +66,10 @@ public class FileServiceUtil {
 		// Determine the base directory based on the file type
 		String basePath;
 		switch (fileType) {
-		case TdsDdoConstant.FORM16:
+		case TdsDdoConstant.FORM16, TdsDdoConstant.GST:
 			basePath = documentPath;
 			break;
-		default:
+            default:
 			throw new IllegalArgumentException("Invalid file type: " + fileType);
 		}
 
@@ -86,5 +88,29 @@ public class FileServiceUtil {
 		// Read and return the file's contents as a byte array
 		return Files.readAllBytes(file.toPath());
 	}
+
+    public Resource fetchImages(String folderName, String fileName) {
+        if (folderName == null || folderName.isBlank() || fileName == null || fileName.isBlank()) {
+            throw new IllegalArgumentException("Folder name and file name must be provided.");
+        }
+
+        String folderPath = resolveFolderPath(folderName);
+
+        File file = new File(folderPath, fileName);
+        if (!file.exists()) {
+            throw new RuntimeException("File not found: " + file.getAbsolutePath());
+        }
+
+        return new FileSystemResource(file);
+    }
+
+
+    private String resolveFolderPath(String folderName) {
+        return switch (folderName.toLowerCase()) {
+            case "gst" -> documentPath;
+
+            default -> throw new IllegalArgumentException("Invalid folder name: " + folderName);
+        };
+    }
 
 }
