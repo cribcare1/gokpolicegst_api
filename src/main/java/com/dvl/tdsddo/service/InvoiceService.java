@@ -22,4 +22,5 @@ public interface InvoiceService {
     public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId);
     public List<InvoiceResponse> getInvoices(Integer ddoId, Integer gstId, String status);
     public InvoiceMaster submitInvoice(InvoiceSubmitRequest req) ;
+    public InvoiceMaster savePaymentReceipt(InvoiceSubmitRequest req) ;
     }

@@ -116,10 +116,10 @@ public class InvoiceController {
 
         try {
             //String invoiceNumber = invoiceService.generateInvoiceNumberWithoutTable(gstId, ddoId);
-            String invoiceNumber=  invoiceService.generateSavedInvoiceNumber(gstId, ddoId);
+            String proformaAdviceNumber=  invoiceService.generateSavedInvoiceNumber(gstId, ddoId);
             response.put("status", "success");
-            response.put(TdsDdoConstant.MESSAGE, "Invoice Number generated successfully");
-            response.put("invoiceNumber", invoiceNumber);
+            response.put(TdsDdoConstant.MESSAGE, "Proforma advice Number generated successfully");
+            response.put("proformaAdviceNumber", proformaAdviceNumber);
 
             return ResponseEntity.ok(response);
 
@@ -127,14 +127,14 @@ public class InvoiceController {
             // Custom messages from your service (GST not found / DDO not found)
             response.put("status", "error");
             response.put(TdsDdoConstant.MESSAGE, ex.getMessage());
-            response.put("invoiceNumber", null);
+            response.put("proformaAdviceNumber", null);
 
             return ResponseEntity.status(HttpStatus.OK).body(response);
 
         } catch (Exception ex) {
             // Unexpected error
             response.put("status", "error");
-            response.put(TdsDdoConstant.MESSAGE, "Something went wrong while generating invoice number");
+            response.put(TdsDdoConstant.MESSAGE, "Something went wrong while generating proforma advice number");
             response.put("error", ex.getMessage());
 
             return ResponseEntity.status(HttpStatus.OK).body(response);

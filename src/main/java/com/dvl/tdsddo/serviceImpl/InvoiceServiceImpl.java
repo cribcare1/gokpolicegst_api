@@ -237,6 +237,11 @@ public class InvoiceServiceImpl implements InvoiceService {
         return invoiceRepo.save(invoice);
     }
 
+    @Override
+    public InvoiceMaster savePaymentReceipt(InvoiceSubmitRequest req) {
+        return null;
+    }
+
 
     // ============================
     // GENERATE UNIQUE INVOICE NUMBER
@@ -561,30 +566,33 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .map(User::getDdoCode)
                 .orElseThrow(() -> new RuntimeException("DDO not found"));
 
-        // 🔹 FY in 25-26 format
-        LocalDate today = LocalDate.now();
-        String financialYearDet=getCurrentFinancialYear();
-        int year = today.getYear() % 100;
-        String financialYear = (today.getMonthValue() >= 4)
-                ? year + "-" + String.format("%02d", year + 1)
-                : String.format("%02d", year - 1) + "-" + year;
+        String last4DdoCode = ddoCode.substring(ddoCode.length() - 4);
 
-        String prefix = last3 + "/" + ddoCode + "/" + financialYear + "/PI";
+        LocalDate today = LocalDate.now();
+
+        // Two-digit year
+        int year = today.getYear() % 100;
+
+        // If month >= April → FY starts this year, else previous year
+        String financialYearStart = (today.getMonthValue() >= 4)
+                ? String.format("%02d", year)
+                : String.format("%02d", year - 1);
+        String prefix = last3  + last4DdoCode + "/" + financialYearStart + "/PA";
 
         // 🔥 Now filter by FY + Status + Prefix
         Optional<InvoiceMaster> lastSaved =
                 invoiceRepo.findTopByFinancialYearAndInvoiceNumberStartingWithAndInvoiceStatusOrderByIdDesc(
-                        financialYearDet, prefix, "SAVED"
+                        financialYearStart, prefix, "SAVED"
                 );
 
 
         int next = lastSaved.map(inv -> {
             String lastNo = inv.getInvoiceNumber()
-                    .substring(inv.getInvoiceNumber().lastIndexOf("PI") + 2);
+                    .substring(inv.getInvoiceNumber().lastIndexOf("PA") + 2);
             return Integer.parseInt(lastNo) + 1;
         }).orElse(1);
 
-        return prefix + String.format("%04d", next);
+        return prefix + String.format("%03d", next);
     }
 
 
