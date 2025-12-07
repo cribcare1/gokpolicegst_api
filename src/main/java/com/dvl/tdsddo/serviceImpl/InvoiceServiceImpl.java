@@ -4,9 +4,7 @@ import com.dvl.tdsddo.Exception.ResourceNotFoundException;
 import com.dvl.tdsddo.constatnt.TdsDdoConstant;
 import com.dvl.tdsddo.model.*;
 import com.dvl.tdsddo.repository.*;
-import com.dvl.tdsddo.request.InvoiceItemRequest;
-import com.dvl.tdsddo.request.InvoiceRequest;
-import com.dvl.tdsddo.request.InvoiceSubmitRequest;
+import com.dvl.tdsddo.request.*;
 import com.dvl.tdsddo.response.*;
 import com.dvl.tdsddo.service.InvoiceService;
 import com.dvl.tdsddo.service.UserService;
@@ -206,7 +204,7 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .orElseThrow(() -> new RuntimeException("Invoice not found for ID: " + req.getInvoiceId()));
 
         // Validate status transition
-        if (!"SAVE".equalsIgnoreCase(invoice.getInvoiceStatus())) {
+        if (!"SAVED".equalsIgnoreCase(invoice.getInvoiceStatus())) {
             throw new RuntimeException(
                     "Invoice already submitted or not in a valid status for submission! Current Status: "
                             + invoice.getInvoiceStatus()
@@ -222,8 +220,8 @@ public class InvoiceServiceImpl implements InvoiceService {
         invoice.setFinalInvoiceNumber(finalInvoiceNumber);
 
         // Update Amounts
-        invoice.setPaidAmount(req.getPaidAmount() != null ? req.getPaidAmount() : invoice.getPaidAmount());
-        invoice.setBalanceAmount(req.getBalanceAmount() != null ? req.getBalanceAmount() : invoice.getBalanceAmount());
+//        invoice.setPaidAmount(req.getPaidAmount() != null ? req.getPaidAmount() : invoice.getPaidAmount());
+//        invoice.setBalanceAmount(req.getBalanceAmount() != null ? req.getBalanceAmount() : invoice.getBalanceAmount());
 
         // Update Submission State
         invoice.setInvoiceStatus("SUBMITTED");
@@ -551,44 +549,174 @@ public class InvoiceServiceImpl implements InvoiceService {
     @Override
     public String generateSavedInvoiceNumber(Integer gstId, Integer ddoId) {
 
-        String gstNum = gstRepo.findById(gstId)
-                .map(GSTMaster::getGstNumber)
-                .orElseThrow(() -> new RuntimeException("GST not found"));
+        if (gstId == null || ddoId == null) {
+            throw new RuntimeException("GST ID and DDO ID must not be null");
+        }
+
+        // Load GST
+        GSTMaster gst = gstRepo.findById(gstId)
+                .orElseThrow(() -> new RuntimeException("GST not found: " + gstId));
+
+        // Load DDO
+        User ddo = ddoRepo.findById(ddoId)
+                .orElseThrow(() -> new RuntimeException("DDO not found: " + ddoId));
+
+        // Prepare prefix
+        String gstNum = gst.getGstNumber();
+        String ddoCode = ddo.getDdoCode();
 
         String last3 = gstNum.substring(gstNum.length() - 3);
+        String last4 = ddoCode.substring(ddoCode.length() - 4);
 
-        String ddoCode = ddoRepo.findById(ddoId)
-                .map(User::getDdoCode)
-                .orElseThrow(() -> new RuntimeException("DDO not found"));
-
-        // 🔹 FY in 25-26 format
         LocalDate today = LocalDate.now();
-        String financialYearDet=getCurrentFinancialYear();
         int year = today.getYear() % 100;
-        String financialYear = (today.getMonthValue() >= 4)
-                ? year + "-" + String.format("%02d", year + 1)
-                : String.format("%02d", year - 1) + "-" + year;
+        String fy = (today.getMonthValue() >= 4)
+                ? String.valueOf(year)
+                : String.format("%02d", year - 1);
 
-        String prefix = last3 + "/" + ddoCode + "/" + financialYear + "/PI";
+        String prefix = last3 + last4 + "/" + fy + "/PA";
 
-        // 🔥 Now filter by FY + Status + Prefix
-        Optional<InvoiceMaster> lastSaved =
-                invoiceRepo.findTopByFinancialYearAndInvoiceNumberStartingWithAndInvoiceStatusOrderByIdDesc(
-                        financialYearDet, prefix, "SAVED"
-                );
+        // Fetch last receipt
+        String lastReceipt = invoiceRepo.findLastSavedInvoice(gstId, ddoId);
 
+        int next = 1;
+        if (lastReceipt != null) {
+            String seq = lastReceipt.substring(lastReceipt.lastIndexOf("PA") + 2);
+            next = Integer.parseInt(seq) + 1;
+        }
 
-        int next = lastSaved.map(inv -> {
-            String lastNo = inv.getInvoiceNumber()
-                    .substring(inv.getInvoiceNumber().lastIndexOf("PI") + 2);
-            return Integer.parseInt(lastNo) + 1;
-        }).orElse(1);
-
-        return prefix + String.format("%04d", next);
+        // Final generated receipt
+        return prefix + String.format("%03d", next);
     }
 
 
+
+    //TODO
+    @Override
+    public String generateSubmittedInvoiceNumber(Integer gstId, Integer ddoId) {
+
+        if (gstId == null || ddoId == null) {
+            throw new RuntimeException("GST ID and DDO ID must not be null");
+        }
+
+        // Load GST
+        GSTMaster gst = gstRepo.findById(gstId)
+                .orElseThrow(() -> new RuntimeException("GST not found: " + gstId));
+
+        // Load DDO
+        User ddo = ddoRepo.findById(ddoId)
+                .orElseThrow(() -> new RuntimeException("DDO not found: " + ddoId));
+
+        // Prepare prefix
+        String gstNum = gst.getGstNumber();
+        String ddoCode = ddo.getDdoCode();
+
+        String last3 = gstNum.substring(gstNum.length() - 3);
+        String last4 = ddoCode.substring(ddoCode.length() - 4);
+
+        LocalDate today = LocalDate.now();
+        int year = today.getYear() % 100;
+        String fy = (today.getMonthValue() >= 4)
+                ? String.valueOf(year)
+                : String.format("%02d", year - 1);
+
+        String prefix = last3 + last4 + "/" + fy + "/IN";
+
+        // Fetch last receipt
+        String lastReceipt = invoiceRepo.findLastSubmittedInvoice(gstId, ddoId);
+
+        int next = 1;
+        if (lastReceipt != null) {
+            String seq = lastReceipt.substring(lastReceipt.lastIndexOf("IN") + 2);
+            next = Integer.parseInt(seq) + 1;
+        }
+
+        // Final generated receipt
+        return prefix + String.format("%03d", next);
+    }
+
 //    @Override
+//    public String generateSavedInvoiceNumber(Integer gstId, Integer ddoId) {
+//
+//        String gstNum = gstRepo.findById(gstId)
+//                .map(GSTMaster::getGstNumber)
+//                .orElseThrow(() -> new RuntimeException("GST not found"));
+//
+//        String last3 = gstNum.substring(gstNum.length() - 3);
+//
+//        String ddoCode = ddoRepo.findById(ddoId)
+//                .map(User::getDdoCode)
+//                .orElseThrow(() -> new RuntimeException("DDO not found"));
+//
+//        // 🔹 FY in 25-26 format
+//        LocalDate today = LocalDate.now();
+//        String financialYearDet=getCurrentFinancialYear();
+//        int year = today.getYear() % 100;
+//        String financialYear = (today.getMonthValue() >= 4)
+//                ? year + "-" + String.format("%02d", year + 1)
+//                : String.format("%02d", year - 1) + "-" + year;
+//
+//        String prefix = last3 + "/" + ddoCode + "/" + financialYear + "/PA";
+//
+//        // 🔥 Now filter by FY + Status + Prefix
+//        Optional<InvoiceMaster> lastSaved =
+//                invoiceRepo.findTopByFinancialYearAndInvoiceNumberStartingWithAndInvoiceStatusOrderByIdDesc(
+//                        financialYearDet, prefix, "SAVED"
+//                );
+//
+//
+//        int next = lastSaved.map(inv -> {
+//            String lastNo = inv.getInvoiceNumber()
+//                    .substring(inv.getInvoiceNumber().lastIndexOf("PI") + 2);
+//            return Integer.parseInt(lastNo) + 1;
+//        }).orElse(1);
+//
+//        return prefix + String.format("%04d", next);
+//    }
+
+//    @Override
+//    public String generateSavedInvoiceNumber(Integer gstId, Integer ddoId) {
+//
+//        // ------- GST last 7 characters (example: "1ZX0032") -------
+//        String gstNum = gstRepo.findById(gstId)
+//                .map(GSTMaster::getGstNumber)
+//                .orElseThrow(() -> new RuntimeException("GST not found"));
+//
+//        // Take last 7 chars for invoice: 1234567 -> "34567"
+//        String gstCode = gstNum.substring(gstNum.length() - 7);
+//
+//        // ------- Current Year (YY) -------
+//        int yearYY = LocalDate.now().getYear() % 100; // example: 2025 → 25
+//
+//        // ------- Prefix Format -------
+//        // Example: 1ZX0032/25/PA
+//        String prefix = gstCode + "/" + yearYY + "/PA";
+//
+//        // ------- Fetch last saved invoice -------
+//        Optional<InvoiceMaster> lastSaved =
+//                invoiceRepo.findTopByInvoiceNumberStartingWithAndInvoiceStatusOrderByIdDesc(
+//                        prefix, "SAVED"
+//                );
+//
+//        // ------- Calculate next running number -------
+//        int next = lastSaved.map(inv -> {
+//
+//            String lastInv = inv.getInvoiceNumber();      // example: 1ZX0032/25/PA0021
+//
+//            // Extract the numeric part after "PA"
+//            String number = lastInv.substring(lastInv.lastIndexOf("PA") + 2); // "0021"
+//
+//            return Integer.parseInt(number) + 1;
+//
+//        }).orElse(1);
+//
+//        // ------- Build final invoice number -------
+//        return prefix + String.format("%04d", next);  // PA0001
+//    }
+
+
+
+    //    @Override
 //    public String generateSavedInvoiceNumber(Integer gstId, Integer ddoId) {
 //
 //        String gstNum = gstRepo.findById(gstId)
@@ -674,40 +802,76 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
         }
     }
 
-    @Override
-    public String generateSubmittedInvoiceNumber(Integer gstId, Integer ddoId) {
+//    @Override
+//    public String generateSubmittedInvoiceNumber(Integer gstId, Integer ddoId) {
+//
+//        String gstNum = gstRepo.findById(gstId)
+//                .map(GSTMaster::getGstNumber)
+//                .orElseThrow(() -> new RuntimeException("GST not found"));
+//
+//        String last3 = gstNum.substring(gstNum.length() - 3);
+//
+//        String ddoCode = ddoRepo.findById(ddoId)
+//                .map(User::getDdoCode)
+//                .orElseThrow(() -> new RuntimeException("DDO not found"));
+//
+//        // FY → 25-26 format
+//        LocalDate today = LocalDate.now();
+//        int year = today.getYear() % 100;
+//        String fy = (today.getMonthValue() >= 4)
+//                ? year + "-" + String.format("%02d", year + 1)
+//                : String.format("%02d", year - 1) + "-" + year;
+//
+//        String prefix = last3 + "/" + ddoCode + "/" + fy + "/";
+//
+//        // 🔥 Count only SUBMITTED invoices
+//        Optional<InvoiceMaster> lastSubmitted =
+//                invoiceRepo.findTopByInvoiceNumberStartingWithAndInvoiceStatusOrderByIdDesc(
+//                        prefix, "SUBMITTED");
+//
+//        int next = lastSubmitted.map(inv -> {
+//            String lastNo = inv.getInvoiceNumber().substring(inv.getInvoiceNumber().lastIndexOf("/") + 1);
+//            return Integer.parseInt(lastNo) + 1;
+//        }).orElse(1);
+//
+//        return prefix + String.format("%04d", next);
+//    }
 
-        String gstNum = gstRepo.findById(gstId)
-                .map(GSTMaster::getGstNumber)
-                .orElseThrow(() -> new RuntimeException("GST not found"));
+//    @Override
+//    public String generateSubmittedInvoiceNumber(Integer gstId, Integer ddoId) {
+//
+//        // ------- Get Full GST Number -------
+//        String gstCode = gstRepo.findById(gstId)
+//                .map(GSTMaster::getGstNumber)
+//                .orElseThrow(() -> new RuntimeException("GST not found"));
+//
+//        // ------- Extract Last 7 Characters (your example 1ZX0032) -------
+//        String lastPart = gstCode.substring(gstCode.length() - 7);
+//
+//        // ------- Current Financial Year (YY) -------
+//        int yearYY = LocalDate.now().getYear() % 100; // 2025 => 25
+//
+//        // ------- Invoice Prefix -------
+//        // Example: 1ZX0032/25/IN
+//        String prefix = lastPart + "/" + yearYY + "/IN";
+//
+//        // ------- Get Last Submitted Invoice -------
+//        Optional<InvoiceMaster> lastSubmitted =
+//                invoiceRepo.findTopByInvoiceNumberStartingWithAndInvoiceStatusOrderByIdDesc(
+//                        prefix, "SUBMITTED"
+//                );
+//
+//        // ------- Extract Next Running Number -------
+//        int next = lastSubmitted.map(inv -> {
+//            String invoice = inv.getInvoiceNumber();     // example: 1ZX0032/25/IN003
+//            String numberPart = invoice.substring(invoice.lastIndexOf("IN") + 2);  // "003"
+//            return Integer.parseInt(numberPart) + 1;
+//        }).orElse(1);
+//
+//        // ------- Final Invoice Format -------
+//        return prefix + String.format("%03d", next);  // IN001
+//    }
 
-        String last3 = gstNum.substring(gstNum.length() - 3);
-
-        String ddoCode = ddoRepo.findById(ddoId)
-                .map(User::getDdoCode)
-                .orElseThrow(() -> new RuntimeException("DDO not found"));
-
-        // FY → 25-26 format
-        LocalDate today = LocalDate.now();
-        int year = today.getYear() % 100;
-        String fy = (today.getMonthValue() >= 4)
-                ? year + "-" + String.format("%02d", year + 1)
-                : String.format("%02d", year - 1) + "-" + year;
-
-        String prefix = last3 + "/" + ddoCode + "/" + fy + "/";
-
-        // 🔥 Count only SUBMITTED invoices
-        Optional<InvoiceMaster> lastSubmitted =
-                invoiceRepo.findTopByInvoiceNumberStartingWithAndInvoiceStatusOrderByIdDesc(
-                        prefix, "SUBMITTED");
-
-        int next = lastSubmitted.map(inv -> {
-            String lastNo = inv.getInvoiceNumber().substring(inv.getInvoiceNumber().lastIndexOf("/") + 1);
-            return Integer.parseInt(lastNo) + 1;
-        }).orElse(1);
-
-        return prefix + String.format("%04d", next);
-    }
     @Override
     public List<InvoiceResponse> getInvoices(Integer ddoId, Integer gstId,  String status) {
 
@@ -743,6 +907,10 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
                                 .invoiceDate(inv.getInvoiceDate())
                                 .finalInvoiceNumber(inv.getFinalInvoiceNumber())
                                 .finalInvoiceDate(inv.getSubmittedDate())
+                                .receiptInvoiceDate(inv.getPaidDate())
+                                .receiptInvoiceNumber(inv.getReceiptNumber())
+                                .paymentType(inv.getPaymentType())
+                                .paymentReferenceNumber(inv.getReferenceNumber())
                                 .remarks(inv.getRemarks())
                                 .totalAmount(BigDecimal.valueOf(inv.getTotalAmount() == null ? 0.0 : inv.getTotalAmount()))
                                 .totalCgst(BigDecimal.valueOf(inv.getTotalCgst() == null ? 0.0 : inv.getTotalCgst()))
@@ -823,6 +991,569 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
             throw new RuntimeException("Unexpected error while fetching invoices!");
         }
     }
+
+
+    @Override
+    public Map<String, Object> generateBulkReceiptNumbers(ReceiptGenerateRequest request) {
+
+        if (request.getEntries() == null || request.getEntries().isEmpty()) {
+            throw new RuntimeException("Entries cannot be empty");
+        }
+
+        // Extract all GST + DDO IDs
+        Set<Integer> gstIds = request.getEntries().stream()
+                .map(ReceiptGenerateRequest.ReceiptEntry::getGstId)
+                .collect(Collectors.toSet());
+
+        Set<Integer> ddoIds = request.getEntries().stream()
+                .map(ReceiptGenerateRequest.ReceiptEntry::getDdoId)
+                .collect(Collectors.toSet());
+
+        // ------------------------------------------
+        // 1️⃣ BATCH LOAD ALL GST RECORDS (ONE QUERY)
+        // ------------------------------------------
+        Map<Integer, String> gstMap = gstRepo.findByIdIn(gstIds).stream()
+                .collect(Collectors.toMap(GSTMaster::getId, GSTMaster::getGstNumber));
+
+        // ------------------------------------------
+        // 2️⃣ BATCH LOAD ALL DDO RECORDS (ONE QUERY)
+        // ------------------------------------------
+        Map<Integer, String> ddoMap = ddoRepo.findByIdIn(ddoIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getDdoCode));
+
+        // ------------------------------------------
+        // Prepare prefixes
+        // ------------------------------------------
+        Map<String, String> prefixMap = new HashMap<>();
+
+        LocalDate today = LocalDate.now();
+        int year = today.getYear() % 100;
+        String fy = (today.getMonthValue() >= 4)
+                ? String.valueOf(year)
+                : String.format("%02d", year - 1);
+
+        Set<String> keys = new HashSet<>();
+
+        for (ReceiptGenerateRequest.ReceiptEntry entry : request.getEntries()) {
+
+            Integer gstId = entry.getGstId();
+            Integer ddoId = entry.getDdoId();
+
+            String gstNum = gstMap.get(gstId);
+            if (gstNum == null) throw new RuntimeException("GST not found: " + gstId);
+
+            String ddoCode = ddoMap.get(ddoId);
+            if (ddoCode == null) throw new RuntimeException("DDO not found: " + ddoId);
+
+            String last3 = gstNum.substring(gstNum.length() - 3);
+            String last4DDO = ddoCode.substring(ddoCode.length() - 4);
+
+            // Format → 1ZX0032/25/PR
+            String prefix = last3 + last4DDO + "/" + fy + "/PR";
+
+            String key = gstId + "-" + ddoId;
+            prefixMap.put(key, prefix);
+            keys.add(key);
+        }
+
+        // ------------------------------------------
+        // 3️⃣ Fetch last receipts for all keys (ONE QUERY)
+        // ------------------------------------------
+        List<Object[]> dbResults = invoiceRepo.findLastReceiptsForKeys(keys);
+
+        Map<String, String> lastMap = new HashMap<>();
+        for (Object[] row : dbResults) {
+            Integer ddoId = (Integer) row[0];
+            Integer gstId = (Integer) row[1];
+            String rec = (String) row[2];
+            lastMap.put(gstId + "-" + ddoId, rec);
+        }
+
+        // ------------------------------------------
+        // 4️⃣ Generate new receipt numbers
+        // ------------------------------------------
+        Map<String, String> receiptMap = new HashMap<>();
+
+        for (String key : keys) {
+            String prefix = prefixMap.get(key);
+            String last = lastMap.get(key);
+
+            int next = 1;
+            if (last != null) {
+                String seq = last.substring(last.lastIndexOf("PR") + 2);
+                next = Integer.parseInt(seq) + 1;
+            }
+
+            receiptMap.put(key, prefix + String.format("%03d", next));
+        }
+
+        // Final Response
+        Map<String, Object> res = new HashMap<>();
+        res.put("status", "success");
+        res.put("generatedReceipts", receiptMap);
+
+        return res;
+    }
+
+
+
+    public String generateSingleReceiptNumber(Integer gstId, Integer ddoId) {
+
+        if (gstId == null || ddoId == null) {
+            throw new RuntimeException("GST ID and DDO ID must not be null");
+        }
+
+        // Load GST
+        GSTMaster gst = gstRepo.findById(gstId)
+                .orElseThrow(() -> new RuntimeException("GST not found: " + gstId));
+
+        // Load DDO
+        User ddo = ddoRepo.findById(ddoId)
+                .orElseThrow(() -> new RuntimeException("DDO not found: " + ddoId));
+
+        // Prepare prefix
+        String gstNum = gst.getGstNumber();
+        String ddoCode = ddo.getDdoCode();
+
+        String last3 = gstNum.substring(gstNum.length() - 3);
+        String last4 = ddoCode.substring(ddoCode.length() - 4);
+
+        LocalDate today = LocalDate.now();
+        int year = today.getYear() % 100;
+        String fy = (today.getMonthValue() >= 4)
+                ? String.valueOf(year)
+                : String.format("%02d", year - 1);
+
+        String prefix = last3 + last4 + "/" + fy + "/PR";
+
+        // Fetch last receipt
+        String lastReceipt = invoiceRepo.findLastReceipt(gstId, ddoId);
+
+        int next = 1;
+        if (lastReceipt != null) {
+            String seq = lastReceipt.substring(lastReceipt.lastIndexOf("PR") + 2);
+            next = Integer.parseInt(seq) + 1;
+        }
+
+        // Final generated receipt
+        return prefix + String.format("%03d", next);
+    }
+
+
+
+    @Transactional
+    @Override
+    public Map<String, Object> createBulkReceipts(ReceiptBulkCreateRequest request) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        if (request.getReceipts() == null || request.getReceipts().isEmpty()) {
+            response.put("status", "error");
+            response.put("message", "Receipts list cannot be empty");
+            return response;
+        }
+
+        // 1️⃣ Collect invoice IDs
+        List<Integer> invoiceIds = request.getReceipts().stream()
+                .map(ReceiptCreationRequest::getInvoiceId)
+                .toList();
+
+        // 2️⃣ Fetch invoices from DB
+        List<InvoiceMaster> invoices = invoiceRepo.findAllByIds(invoiceIds);
+
+        if (invoices.isEmpty()) {
+            response.put("status", "error");
+            response.put("message", "No invoices found for provided IDs");
+            return response;
+        }
+
+        Map<Integer, InvoiceMaster> invoiceMap =
+                invoices.stream().collect(Collectors.toMap(InvoiceMaster::getId, i -> i));
+
+        List<Map<String, String>> updatedInvoices = new ArrayList<>();
+
+        // 3️⃣ Process every invoice ONE BY ONE
+        for (ReceiptCreationRequest r : request.getReceipts()) {
+
+            InvoiceMaster invoice = invoiceMap.get(r.getInvoiceId());
+            if (invoice == null) continue;
+
+            Integer gstId = invoice.getGstId();
+            Integer ddoId = invoice.getDdoId();
+
+            // ⭐ 4️⃣ Generate receipt individually → NO KEY VALUE
+            String receiptNumber = generateSingleReceiptNumber(gstId, ddoId);
+
+            // 5️⃣ Update invoice fields
+            invoice.setReceiptNumber(receiptNumber);
+            invoice.setPaymentType(r.getType());
+            invoice.setReferenceNumber(r.getReferenceNumber());
+            invoice.setPaidDate(r.getPaymentDate());
+
+            invoice.setPaidAmount(r.getAmountPaid());
+            invoice.setBalanceAmount(invoice.getGrandTotal() - r.getAmountPaid());
+
+            invoice.setInvoiceStatus("RECEIPT");
+
+            // Response item
+            Map<String, String> map = new HashMap<>();
+            map.put("invoiceNumber", invoice.getInvoiceNumber());
+            map.put("receiptNumber", receiptNumber);
+            updatedInvoices.add(map);
+        }
+
+        // 6️⃣ Save all
+        invoiceRepo.saveAll(invoiceMap.values());
+
+        response.put("status", "success");
+        response.put("message", "Receipts created and invoices updated successfully");
+        response.put("updatedInvoices", updatedInvoices);
+        return response;
+    }
+
+//    public Map<String, Object> createBulkReceipts(ReceiptBulkCreateRequest request) {
+//        System.err.println("Inside createBulkReceipts");
+//
+//        Map<String, Object> response = new HashMap<>();
+//
+//        // 1️⃣ Validate request
+//        if (request.getReceipts() == null || request.getReceipts().isEmpty()) {
+//            System.err.println("Receipts list is empty");
+//            response.put("status", "error");
+//            response.put("message", "Receipts list cannot be empty");
+//            response.put("data", null);
+//            return response;
+//        }
+//
+//        // 2️⃣ Collect invoice IDs
+//        List<Integer> invoiceIds = request.getReceipts().stream()
+//                .map(ReceiptCreationRequest::getInvoiceId)
+//                .toList();
+//        System.err.println("Invoice IDs from request: " + invoiceIds);
+//
+//        // 3️⃣ Fetch invoices in batch
+//        List<InvoiceMaster> invoices = invoiceRepo.findAllByIds(invoiceIds);
+//        System.err.println("Invoices fetched from DB: " + invoices);
+//
+//        if (invoices.isEmpty()) {
+//            System.err.println("No invoices found for provided IDs");
+//            response.put("status", "error");
+//            response.put("message", "No invoices found for provided IDs");
+//            response.put("data", null);
+//            return response;
+//        }
+//
+//        Map<Integer, InvoiceMaster> invoiceMap = invoices.stream()
+//                .collect(Collectors.toMap(InvoiceMaster::getId, i -> i));
+//        System.err.println("Invoice Map: " + invoiceMap);
+//
+//        // 4️⃣ Build ReceiptGenerateRequest entries
+//        List<ReceiptGenerateRequest.ReceiptEntry> entries = new ArrayList<>();
+//        for (ReceiptCreationRequest r : request.getReceipts()) {
+//            InvoiceMaster invoice = invoiceMap.get(r.getInvoiceId());
+//            if (invoice == null) {
+//                System.err.println("Invoice not found in map for ID: " + r.getInvoiceId());
+//                continue;
+//            }
+//            if (invoice.getGstId() == null || invoice.getDdoId() == null) {
+//                System.err.println("Skipping invoice due to null GST/DDO: " + invoice.getInvoiceNumber());
+//                continue;
+//            }
+//            entries.add(new ReceiptGenerateRequest.ReceiptEntry(invoice.getGstId(), invoice.getDdoId()));
+//        }
+//
+//        // 5️⃣ Check if any entries are valid
+//        if (entries.isEmpty()) {
+//            System.err.println("No valid invoices found for receipt generation");
+//            response.put("status", "error");
+//            response.put("message", "No valid invoices found to generate receipts. Please check invoice IDs and GST/DDO values.");
+//            response.put("data", null);
+//            return response;
+//        }
+//
+//        // Optional: add a readable toString for logging
+//        System.err.println("ReceiptGenerateRequest entries: " + entries);
+//
+//        ReceiptGenerateRequest genReq = new ReceiptGenerateRequest();
+//        genReq.setEntries(entries);
+//
+//        // 6️⃣ Generate receipts
+//        Map<String, Object> generated;
+//        try {
+//            generated = generateBulkReceiptNumbers(genReq);
+//            System.err.println("Generated receipts: " + generated);
+//        } catch (RuntimeException e) {
+//            System.err.println("Error in generateBulkReceiptNumbers: " + e.getMessage());
+//            response.put("status", "error");
+//            response.put("message", e.getMessage());
+//            response.put("data", null);
+//            return response;
+//        }
+//
+//        Map<String, String> generatedMap = (Map<String, String>) generated.get("generatedReceipts");
+//        System.err.println("Generated Receipts Map: " + generatedMap);
+//
+//        // 7️⃣ Update invoices
+//        List<Map<String, String>> updatedInvoices = new ArrayList<>();
+//        for (ReceiptCreationRequest r : request.getReceipts()) {
+//            InvoiceMaster invoice = invoiceMap.get(r.getInvoiceId());
+//            if (invoice == null) {
+//                System.err.println("Skipping invoiceId not found in map: " + r.getInvoiceId());
+//                continue;
+//            }
+//
+//            String key = invoice.getGstId() + "-" + invoice.getDdoId();
+//            String generatedReceipt = generatedMap.get(key);
+//            if (generatedReceipt == null) {
+//                System.err.println("No generated receipt found for key: " + key);
+//                continue;
+//            }
+//
+//            System.err.println("Setting receipt for invoice " + invoice.getInvoiceNumber() + ": " + generatedReceipt);
+//
+//            invoice.setReceiptNumber(generatedReceipt);
+//            invoice.setPaymentType(r.getType());
+//            invoice.setReferenceNumber(r.getReferenceNumber());
+//            invoice.setPaidDate(r.getPaymentDate());
+//
+//            // Handle amounts safely
+//            double previousPaid = invoice.getPaidAmount() == null ? 0.0 : invoice.getPaidAmount();
+//            double newPaidAmount = previousPaid + (r.getAmountPaid() != null ? r.getAmountPaid() : 0.0);
+//            invoice.setPaidAmount(newPaidAmount);
+//            invoice.setBalanceAmount(invoice.getGrandTotal() - newPaidAmount);
+//
+//            invoice.setInvoiceStatus("RECEIPT");
+//
+//            Map<String, String> map = new HashMap<>();
+//            map.put("invoiceNumber", invoice.getInvoiceNumber());
+//            map.put("receiptNumber", generatedReceipt);
+//            updatedInvoices.add(map);
+//        }
+//
+//        // 8️⃣ Save all invoices in batch
+//        invoiceRepo.saveAll(invoiceMap.values());
+//
+//        response.put("status", "success");
+//        response.put("updatedInvoices", updatedInvoices);
+//
+//        System.err.println("Completed createBulkReceipts method");
+//        return response;
+//    }
+
+//    public Map<String, Object> createBulkReceipts(ReceiptBulkCreateRequest request) {
+//        System.err.println("Inside the method createBulkReceipts");
+//
+//        Map<String, Object> response = new HashMap<>();
+//
+//        if (request.getReceipts() == null || request.getReceipts().isEmpty()) {
+//            System.err.println("Receipts list is empty");
+//            response.put("status", "error");
+//            response.put("message", "Receipts list cannot be empty");
+//            response.put("data", null);
+//            return response;
+//        }
+//
+//        // Collect invoice IDs
+//        List<Integer> invoiceIds = request.getReceipts().stream()
+//                .map(ReceiptCreationRequest::getInvoiceId)
+//                .toList();
+//        System.err.println("Invoice IDs from request: " + invoiceIds);
+//
+//        // Fetch invoices
+//        List<InvoiceMaster> invoices = invoiceRepo.findAllByIds(invoiceIds);
+//        System.err.println("Invoices fetched from DB: " + invoices);
+//
+//        if (invoices.isEmpty()) {
+//            System.err.println("No invoices found for provided IDs");
+//            response.put("status", "error");
+//            response.put("message", "No invoices found for provided IDs");
+//            response.put("data", null);
+//            return response;
+//        }
+//
+//        Map<Integer, InvoiceMaster> invoiceMap = invoices.stream()
+//                .collect(Collectors.toMap(InvoiceMaster::getId, i -> i));
+//        System.err.println("Invoice Map: " + invoiceMap);
+//
+//        // Build ReceiptGenerateRequest
+//        List<ReceiptGenerateRequest.ReceiptEntry> entries = new ArrayList<>();
+//        for (ReceiptCreationRequest r : request.getReceipts()) {
+//            System.err.println("Processing invoiceId: " + r.getInvoiceId());
+//            InvoiceMaster invoice = invoiceMap.get(r.getInvoiceId());
+//            if (invoice == null) {
+//                System.err.println("Invoice not found in map for ID: " + r.getInvoiceId());
+//                continue;
+//            }
+//            System.err.println("Invoice found: " + invoice.getInvoiceNumber() + " | GST: " + invoice.getGstId() + " | DDO: " + invoice.getDdoId());
+//            entries.add(new ReceiptGenerateRequest.ReceiptEntry(invoice.getGstId(), invoice.getDdoId()));
+//        }
+//        System.err.println("ReceiptGenerateRequest entries: " + entries);
+//
+//        if (entries.isEmpty()) {
+//            System.err.println("No valid invoices found for receipt generation");
+//            response.put("status", "error");
+//            response.put("message", "No valid invoices found to generate receipts. Please check invoice IDs.");
+//            response.put("data", null);
+//            return response;
+//        }
+//
+//        ReceiptGenerateRequest genReq = new ReceiptGenerateRequest();
+//        genReq.setEntries(entries);
+//
+//        System.err.println(genReq);
+//        System.err.println("entes"+entries);
+//
+//        // Generate receipts
+//        Map<String, Object> generated = generateBulkReceiptNumbers(genReq);
+//        System.err.println(generated);
+//        Map<String, String> generatedMap = (Map<String, String>) generated.get("generatedReceipts");
+//        System.err.println("Generated Receipts Map: " + generatedMap);
+//
+//        List<Map<String, String>> updatedInvoices = new ArrayList<>();
+//
+//        for (ReceiptCreationRequest r : request.getReceipts()) {
+//            InvoiceMaster invoice = invoiceMap.get(r.getInvoiceId());
+//            if (invoice == null) {
+//                System.err.println("Skipping invoiceId not found in map: " + r.getInvoiceId());
+//                continue;
+//            }
+//
+//            String key = invoice.getGstId() + "-" + invoice.getDdoId();
+//            System.err.println("Key for generated receipt: " + key);
+//
+//            String generatedReceipt = generatedMap.get(key);
+//            if (generatedReceipt == null) {
+//                System.err.println("No generated receipt found for key: " + key);
+//                continue;
+//            }
+//
+//            System.err.println("Setting receipt for invoice " + invoice.getInvoiceNumber() + ": " + generatedReceipt);
+//
+//            invoice.setReceiptNumber(generatedReceipt);
+//            invoice.setPaymentType(r.getType());
+//            invoice.setReferenceNumber(r.getReferenceNumber());
+//            invoice.setPaidDate(r.getPaymentDate());
+//
+//            invoice.setPaidAmount(r.getAmountPaid());
+//            invoice.setBalanceAmount(invoice.getGrandTotal() - r.getAmountPaid());
+//
+//            invoice.setInvoiceStatus("RECEIPT");
+//
+//            Map<String, String> map = new HashMap<>();
+//            map.put("invoiceNumber", invoice.getInvoiceNumber());
+//            map.put("receiptNumber", generatedReceipt);
+//            updatedInvoices.add(map);
+//        }
+//
+//        invoiceRepo.saveAll(invoiceMap.values());
+//
+//        response.put("status", "success");
+//        response.put("updatedInvoices", updatedInvoices);
+//
+//        System.err.println("Completed createBulkReceipts method");
+//        return response;
+//    }
+
+
+
+//    public Map<String, Object> createBulkReceipts(ReceiptBulkCreateRequest request) {
+//
+//        Map<String, Object> response = new HashMap<>();
+//        List<String> updatedReceipts = new ArrayList<>();
+//
+//        // ---------------------------------------------------------
+//        // 1️⃣ Collect all invoice IDs
+//        // ---------------------------------------------------------
+//        List<Integer> invoiceIds = request.getReceipts()
+//                .stream()
+//                .map(ReceiptCreationRequest::getInvoiceId)
+//                .toList();
+//
+//        // ---------------------------------------------------------
+//        // 2️⃣ Fetch all invoices at once
+//        // ---------------------------------------------------------
+//        List<InvoiceMaster> invoices = invoiceRepo.findAllByIds(invoiceIds);
+//
+//        Map<Integer, InvoiceMaster> invoiceMap = invoices.stream()
+//                .collect(Collectors.toMap(InvoiceMaster::getId, inv -> inv));
+//
+//        // ---------------------------------------------------------
+//        // 3️⃣ Build ReceiptGenerateRequest
+//        // ---------------------------------------------------------
+//        List<ReceiptGenerateRequest.ReceiptEntry> entries = new ArrayList<>();
+//
+//        for (ReceiptCreationRequest entry : request.getReceipts()) {
+//
+//            InvoiceMaster invoice = invoiceMap.get(entry.getInvoiceId());
+//            if (invoice == null) {
+//                throw new RuntimeException("Invoice not found: " + entry.getInvoiceId());
+//            }
+//
+//            entries.add(new ReceiptGenerateRequest.ReceiptEntry(
+//                    invoice.getGstId(),
+//                    invoice.getDdoId()
+//            ));
+//        }
+//
+//        ReceiptGenerateRequest genReq = new ReceiptGenerateRequest();
+//        genReq.setEntries(entries);
+//
+//        // ---------------------------------------------------------
+//        // 4️⃣ Generate bulk receipt numbers
+//        // ---------------------------------------------------------
+//        Map<String, Object> generated = generateBulkReceiptNumbers(genReq);
+//
+//        Map<String, String> generatedMap =
+//                (Map<String, String>) generated.get("generatedReceipts");
+//
+//        // ---------------------------------------------------------
+//        // 5️⃣ Update invoice records
+//        // ---------------------------------------------------------
+//        for (ReceiptCreationRequest entry : request.getReceipts()) {
+//
+//            InvoiceMaster invoice = invoiceMap.get(entry.getInvoiceId());
+//
+//            String key = invoice.getGstId() + "-" + invoice.getDdoId();
+//            String generatedReceipt = generatedMap.get(key);
+//
+//            if (generatedReceipt == null) {
+//                throw new RuntimeException("Receipt not generated for: " + key);
+//            }
+//
+//            // Receipt number
+//            invoice.setReceiptNumber(generatedReceipt);
+//
+//            // Payment details
+//            invoice.setPaymentType(entry.getType());
+//            invoice.setReferenceNumber(entry.getReferenceNumber());
+//            invoice.setPaidDate(entry.getPaymentDate());
+//
+//            // Amounts
+//            double previousPaid = invoice.getPaidAmount() == null ? 0.0 : invoice.getPaidAmount();
+//            double newPaidAmount = previousPaid + entry.getAmountPaid();
+//
+//            invoice.setPaidAmount(newPaidAmount);
+//            invoice.setBalanceAmount(invoice.getGrandTotal() - newPaidAmount);
+//
+//            // Status update
+//            invoice.setInvoiceStatus("RECEIPT");
+//
+//            updatedReceipts.add(invoice.getInvoiceNumber());
+//        }
+//
+//        // ---------------------------------------------------------
+//        // 6️⃣ Save all invoices in batch
+//        // ---------------------------------------------------------
+//        invoiceRepo.saveAll(invoices);
+//
+//        // ---------------------------------------------------------
+//        // 7️⃣ Final Response
+//        // ---------------------------------------------------------
+//        response.put("status", "success");
+//        response.put("updatedInvoices", updatedReceipts);
+//
+//        return response;
+//    }
 
 }
 

@@ -3,6 +3,8 @@ package com.dvl.tdsddo.service;
 import com.dvl.tdsddo.model.InvoiceMaster;
 import com.dvl.tdsddo.request.InvoiceRequest;
 import com.dvl.tdsddo.request.InvoiceSubmitRequest;
+import com.dvl.tdsddo.request.ReceiptBulkCreateRequest;
+import com.dvl.tdsddo.request.ReceiptGenerateRequest;
 import com.dvl.tdsddo.response.InvoiceResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,4 +24,7 @@ public interface InvoiceService {
     public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId);
     public List<InvoiceResponse> getInvoices(Integer ddoId, Integer gstId, String status);
     public InvoiceMaster submitInvoice(InvoiceSubmitRequest req) ;
+
+    public Map<String, Object> generateBulkReceiptNumbers(ReceiptGenerateRequest request);
+    public Map<String, Object> createBulkReceipts(ReceiptBulkCreateRequest request);
     }

@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface InvoiceMasterRepository extends JpaRepository<InvoiceMaster,Integer> {
     Optional<InvoiceMaster> findTopByInvoiceNumberStartingWithOrderByIdDesc(String prefix);
@@ -18,6 +19,43 @@ public interface InvoiceMasterRepository extends JpaRepository<InvoiceMaster,Int
       AND (:gstId IS NULL OR i.gstId = :gstId)
 """)
     List<InvoiceMaster> findByFilters(Integer ddoId, Integer gstId);
+
+    @Query("""
+       SELECT i.receiptNumber
+       FROM InvoiceMaster i
+       WHERE i.gstId = :gstId AND i.ddoId = :ddoId AND i.receiptNumber IS NOT NULL
+       ORDER BY i.id DESC
+       LIMIT 1
+       """)
+    String findLastReceipt(@Param("gstId") Integer gstId,
+                           @Param("ddoId") Integer ddoId);
+
+
+    @Query("""
+       SELECT i.invoiceNumber
+       FROM InvoiceMaster i
+       WHERE i.gstId = :gstId 
+         AND i.ddoId = :ddoId
+         AND i.invoiceNumber IS NOT NULL
+       ORDER BY i.id DESC
+       LIMIT 1
+       """)
+    String findLastSavedInvoice(@Param("gstId") Integer gstId,
+                                @Param("ddoId") Integer ddoId);
+
+
+    @Query("""
+       SELECT i.finalInvoiceNumber
+       FROM InvoiceMaster i
+       WHERE i.gstId = :gstId 
+         AND i.ddoId = :ddoId
+         AND i.finalInvoiceNumber IS NOT NULL
+       ORDER BY i.id DESC
+       LIMIT 1
+       """)
+    String findLastSubmittedInvoice(@Param("gstId") Integer gstId,
+                                @Param("ddoId") Integer ddoId);
+
 
 //    @Query("""
 //            SELECT new com.dvl.tdsddo.response.InvoiceResponse(
@@ -106,4 +144,18 @@ ORDER BY i.id DESC
     Optional<InvoiceMaster> findTopByFinancialYearAndInvoiceNumberStartingWithAndInvoiceStatusOrderByIdDesc(String financialYear, String prefix, String saved);
 
     Optional<InvoiceMaster> findTopByFinalInvoiceNumberStartingWithAndInvoiceStatusAndFinancialYearOrderByIdDesc(String prefix, String submitted, String fy);
-}
+
+    @Query("""
+    SELECT i.ddoId, i.gstId, i.receiptNumber
+    FROM InvoiceMaster i
+    WHERE CONCAT(i.gstId, '-', i.ddoId) IN :keys
+    ORDER BY i.id DESC
+""")
+    List<Object[]> findLastReceiptsForKeys(@Param("keys") Set<String> keys);
+
+    @Query("""
+    SELECT i 
+    FROM InvoiceMaster i 
+    WHERE i.id IN :ids
+""")
+    List<InvoiceMaster> findAllByIds(@Param("ids") List<Integer> ids);}

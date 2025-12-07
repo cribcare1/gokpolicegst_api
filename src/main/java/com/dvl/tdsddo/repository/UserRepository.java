@@ -1,7 +1,9 @@
 package com.dvl.tdsddo.repository;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import com.dvl.tdsddo.response.DDOCurrentGstResponse;
 import com.dvl.tdsddo.response.DashBoardresponse;
@@ -120,4 +122,5 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 """, nativeQuery = true)
     Optional<DDOCurrentGstResponse> findCurrentGstByDdoId(@Param("ddoId") Integer ddoId);
 
+    List<User> findByIdIn(Set<Integer> ids);
 }

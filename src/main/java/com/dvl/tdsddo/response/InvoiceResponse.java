@@ -34,7 +34,10 @@ public class InvoiceResponse {
     private BigDecimal paidAmount;
     private BigDecimal balanceAmount;
     private String signImage;
-
+    private String receiptInvoiceNumber;
+    private String receiptInvoiceDate;
+private String paymentReferenceNumber;
+    private String paymentType;
     // Nested Objects
     private List<InvoiceItemResponse> items;
     private GstSnapshotResponse gstSnapshot;

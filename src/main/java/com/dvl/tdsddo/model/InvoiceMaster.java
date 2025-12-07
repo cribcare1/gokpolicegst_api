@@ -26,6 +26,12 @@ public class InvoiceMaster extends BaseModel {
     private Integer bankId;
     private Integer customerId;
 
+    private String receiptNumber;
+    private String paymentType;//CASH  / BANK_TRANSFER
+    private String referenceNumber; // Cheque number / Transaction ID
+    private String paidDate;
+
+
     private String invoiceDate;
 
     private String finalInvoiceNumber;
@@ -36,7 +42,7 @@ public class InvoiceMaster extends BaseModel {
 
     private String financialYear;
 
-    // DRAFT, PENDING, FINAL, PAID, CLOSED
+    // DRAFT, PENDING, FINAL, PAID, CLOSED ,RECEIPT
     private String invoiceStatus;
 
     private Double totalAmount;  // Total without GST

@@ -5,10 +5,13 @@ import com.dvl.tdsddo.constatnt.TdsDdoConstant;
 import com.dvl.tdsddo.model.InvoiceMaster;
 import com.dvl.tdsddo.request.InvoiceRequest;
 import com.dvl.tdsddo.request.InvoiceSubmitRequest;
+import com.dvl.tdsddo.request.ReceiptBulkCreateRequest;
+import com.dvl.tdsddo.request.ReceiptGenerateRequest;
 import com.dvl.tdsddo.response.InvoiceResponse;
 import com.dvl.tdsddo.service.InvoiceService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -150,7 +153,7 @@ public class InvoiceController {
 
         try {
             //String invoiceNumber = invoiceService.generateInvoiceNumberWithoutTable(gstId, ddoId);
-            String invoiceNumber=  invoiceService.generateFinalInvoiceNumber(gstId, ddoId);
+            String invoiceNumber=  invoiceService.generateSubmittedInvoiceNumber(gstId, ddoId);
             response.put("status", "success");
             response.put(TdsDdoConstant.MESSAGE, "Invoice Number generated successfully");
             response.put("invoiceNumber", invoiceNumber);
@@ -212,6 +215,25 @@ public class InvoiceController {
         response.put("count", invoices.size());
         response.put("data", invoices);
 
+        return ResponseEntity.ok(response);
+    }
+
+
+
+    @PostMapping("/generate-bulk-receipts")
+    public ResponseEntity<Map<String, Object>> generateBulkReceipts(
+             @RequestBody ReceiptGenerateRequest request) {
+
+        Map<String, Object> response = invoiceService.generateBulkReceiptNumbers(request);
+        return ResponseEntity.ok(response);
+    }
+
+
+    @PostMapping("/createBulkReceipts")
+    public ResponseEntity<Map<String, Object>> createBulkReceipts(
+            @RequestBody ReceiptBulkCreateRequest request) {
+
+        Map<String, Object> response = invoiceService.createBulkReceipts(request);
         return ResponseEntity.ok(response);
     }
 
