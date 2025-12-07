@@ -20,6 +20,7 @@ public class TdsddoApplication {
         app.run(args); // ✅ This must be active for Spring Boot to start
 
         System.out.println("🚀 TDS application started successfully!");
+        System.err.println("This is Adish develop");
         System.out.println("Key from env: " + System.getenv("ENCRYPTION_SECRET_KEY"));
 
     }
