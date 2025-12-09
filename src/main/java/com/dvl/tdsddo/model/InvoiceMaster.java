@@ -55,5 +55,8 @@ public class InvoiceMaster extends BaseModel {
     private Double paidAmount = 0.0;
     private Double balanceAmount = 0.0;
 
+    private String status; // PENDING,CANCELLED,INACTIVE
+
+    private String DifferenceReason;
     private String remarks;
 }

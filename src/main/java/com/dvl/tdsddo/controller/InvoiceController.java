@@ -237,4 +237,21 @@ public class InvoiceController {
         return ResponseEntity.ok(response);
     }
 
+
+    @PostMapping("/updateInvoiceStatus/{invoiceId}/status")
+    public ResponseEntity<Map<String, Object>> updateInvoiceStatus(
+            @PathVariable Integer invoiceId,
+            @RequestParam String status) {
+
+        try {
+            Map<String, Object> response = invoiceService.deleteOrCancelInvoice(invoiceId, status);
+            return ResponseEntity.ok(response);
+
+        } catch (RuntimeException ex) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("status", "error");
+            error.put("message", ex.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
 }

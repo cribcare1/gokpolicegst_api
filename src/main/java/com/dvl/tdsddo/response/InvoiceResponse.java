@@ -38,6 +38,7 @@ public class InvoiceResponse {
     private String receiptInvoiceDate;
 private String paymentReferenceNumber;
     private String paymentType;
+    private String status;
     // Nested Objects
     private List<InvoiceItemResponse> items;
     private GstSnapshotResponse gstSnapshot;

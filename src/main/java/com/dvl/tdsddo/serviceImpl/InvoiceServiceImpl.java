@@ -61,6 +61,7 @@ public class InvoiceServiceImpl implements InvoiceService {
                     .balanceAmount(0.0)
                     .invoiceDate(TdsUtil.changeCurrentTimeToLocalDateTimeFromGmtToISTLocal().toLocalDate().toString())
                     .financialYear(financialYear)
+                    .status("pending")
                     .build();
         }
 
@@ -302,7 +303,7 @@ public class InvoiceServiceImpl implements InvoiceService {
 
         try {
             // Fetch data
-            List<InvoiceMaster> list = invoiceRepo.findByFilters(ddoId, gstId);
+            List<InvoiceMaster> list = invoiceRepo.findByFilters(ddoId, gstId,List.of("inactive"));
 
             // Convert to lightweight response list
             List<InvoiceListResponse> result = list.stream()
@@ -912,6 +913,7 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
                                 .paymentType(inv.getPaymentType())
                                 .paymentReferenceNumber(inv.getReferenceNumber())
                                 .remarks(inv.getRemarks())
+                                .status(inv.getStatus())
                                 .totalAmount(BigDecimal.valueOf(inv.getTotalAmount() == null ? 0.0 : inv.getTotalAmount()))
                                 .totalCgst(BigDecimal.valueOf(inv.getTotalCgst() == null ? 0.0 : inv.getTotalCgst()))
                                 .totalSgst(BigDecimal.valueOf(inv.getTotalSgst() == null ? 0.0 : inv.getTotalSgst()))
@@ -1189,6 +1191,7 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
             invoice.setPaymentType(r.getType());
             invoice.setReferenceNumber(r.getReferenceNumber());
             invoice.setPaidDate(r.getPaymentDate());
+            invoice.setDifferenceReason(r.getDifferenceReason());
 
             invoice.setPaidAmount(r.getAmountPaid());
             invoice.setBalanceAmount(invoice.getGrandTotal() - r.getAmountPaid());
@@ -1208,6 +1211,28 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
         response.put("status", "success");
         response.put("message", "Receipts created and invoices updated successfully");
         response.put("updatedInvoices", updatedInvoices);
+        return response;
+    }
+
+    @Override
+    public Map<String, Object> deleteOrCancelInvoice(Integer invoiceId, String status) {
+        if (status==null || (!status.equalsIgnoreCase("CANCEL") && !status.equalsIgnoreCase("DELETE"))) {
+            throw new RuntimeException("Invalid status. Must be either 'Cancel' or 'Delete'.");
+        }
+        Map<String,Object> response=new HashMap<>();
+        InvoiceMaster invoice = invoiceRepo.findById(invoiceId)
+                .orElseThrow(() -> new RuntimeException("Invoice not found with ID: " + invoiceId));
+        if(status.equalsIgnoreCase("cancel")){
+            invoice.setInvoiceStatus("cancel");
+            invoiceRepo.save(invoice);
+            response.put("message", "Invoice cancelled successfully.");
+            response.put("status", "success");
+        } else if(status.equalsIgnoreCase("delete")){
+            invoice.setInvoiceStatus("delete");
+            invoiceRepo.save(invoice);
+            response.put("message", "Invoice deleted successfully.");
+            response.put("status", "success");
+        }
         return response;
     }
 

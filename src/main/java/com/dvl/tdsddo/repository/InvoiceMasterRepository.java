@@ -13,12 +13,22 @@ import java.util.Set;
 public interface InvoiceMasterRepository extends JpaRepository<InvoiceMaster,Integer> {
     Optional<InvoiceMaster> findTopByInvoiceNumberStartingWithOrderByIdDesc(String prefix);
 
+//    @Query("""
+//    SELECT i FROM InvoiceMaster i
+//    WHERE (:ddoId IS NULL OR i.ddoId = :ddoId)
+//      AND (:gstId IS NULL OR i.gstId = :gstId)
+//""")
+//    List<InvoiceMaster> findByFilters(Integer ddoId, Integer gstId);
+
     @Query("""
     SELECT i FROM InvoiceMaster i
     WHERE (:ddoId IS NULL OR i.ddoId = :ddoId)
       AND (:gstId IS NULL OR i.gstId = :gstId)
+      AND (i.status IS NULL OR i.status NOT IN :excludedStatuses)
+    ORDER BY i.id DESC
 """)
-    List<InvoiceMaster> findByFilters(Integer ddoId, Integer gstId);
+    List<InvoiceMaster> findByFilters(Integer ddoId, Integer gstId, List<String> excludedStatuses);
+
 
     @Query("""
        SELECT i.receiptNumber
@@ -37,7 +47,8 @@ public interface InvoiceMasterRepository extends JpaRepository<InvoiceMaster,Int
        WHERE i.gstId = :gstId 
          AND i.ddoId = :ddoId
          AND i.invoiceNumber IS NOT NULL
-       ORDER BY i.id DESC
+         AND (i.status IS NULL OR i.status = 'pending')
+         ORDER BY i.id DESC
        LIMIT 1
        """)
     String findLastSavedInvoice(@Param("gstId") Integer gstId,

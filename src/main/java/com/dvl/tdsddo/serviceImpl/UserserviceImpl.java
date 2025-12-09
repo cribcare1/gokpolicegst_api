@@ -603,7 +603,7 @@ public Map<String, Object> createUserWithAdminCheck(UserRequest userRequest) {
             return Map.of(
                     TdsDdoConstant.MESSAGE, "DDO user updated successfully",
                     TdsDdoConstant.STATUS, TdsDdoConstant.SUCCESS,
-                    TdsDdoConstant.LOGIN_RESPONSE, updatedUser.getId()
+                    TdsDdoConstant.LOGIN_RESPONSE, loginResponse
             );
 
         } catch (Exception e) {

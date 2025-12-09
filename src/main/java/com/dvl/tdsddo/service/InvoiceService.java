@@ -27,4 +27,6 @@ public interface InvoiceService {
 
     public Map<String, Object> generateBulkReceiptNumbers(ReceiptGenerateRequest request);
     public Map<String, Object> createBulkReceipts(ReceiptBulkCreateRequest request);
+
+    public Map<String,Object> deleteOrCancelInvoice(Integer invoiceId, String status);
     }
