@@ -63,6 +63,7 @@ public class InvoiceServiceImpl implements InvoiceService {
                     .financialYear(financialYear)
                     .notificationDetails(req.getNotificationDetails())
                     .status("pending")
+                    .isShortfall(false)
                     .build();
         }
 
@@ -1264,14 +1265,14 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
                 ? String.valueOf(year)
                 : String.format("%02d", year - 1);
 
-        String prefix = last3 + last4 + "/" + fy + "/PR";
+        String prefix = last3 + last4 + "/" + fy + "/IN";
 
         // Fetch last receipt
         String lastReceipt = invoiceRepo.findLastReceipt(gstId, ddoId);
 
         int next = 1;
         if (lastReceipt != null) {
-            String seq = lastReceipt.substring(lastReceipt.lastIndexOf("PR") + 2);
+            String seq = lastReceipt.substring(lastReceipt.lastIndexOf("IN") + 2);
             next = Integer.parseInt(seq) + 1;
         }
 
@@ -1335,7 +1336,7 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
             invoice.setBalanceAmount(invoice.getGrandTotal() - r.getAmountPaid());
 
             invoice.setInvoiceStatus("SUBMITTED");
-
+            invoice.setIsShortfall(false);
             // Response item
             Map<String, String> map = new HashMap<>();
             map.put("invoiceNumber", invoice.getInvoiceNumber());
@@ -1346,6 +1347,19 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
         // 6️⃣ Save all
         invoiceRepo.saveAll(invoiceMap.values());
 
+        List<ShortfallRequest> shortfallRequests = new ArrayList<>();
+        for (ReceiptCreationRequest r : request.getReceipts()){
+            if(r.getDifferenceReason().equalsIgnoreCase("Shortfall Payment")){
+                ShortfallRequest shortfallRequest = new ShortfallRequest();
+                shortfallRequest.setInvoiceId(r.getInvoiceId());
+                shortfallRequest.setAmount(Double.valueOf(r.getDifferenceAmount()));
+                shortfallRequests.add(shortfallRequest);
+            }
+        }
+
+        if(!shortfallRequests.isEmpty()){
+            createShortfallInvoices(shortfallRequests);
+        }
         response.put("status", "success");
         response.put("message", "Receipts created and invoices updated successfully");
         response.put("updatedInvoices", updatedInvoices);
@@ -1781,7 +1795,7 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
                     .totalIgst(parent.getTotalIgst())
                     .totalCgst(parent.getTotalCgst())
                     .totalSgst(parent.getTotalSgst())
-                    .grandTotal(parent.getGrandTotal())
+                    .grandTotal(shortfallAmount)
                     .paidAmount(0.0)
                     .balanceAmount(0.0)
                     .remarks(parent.getRemarks())

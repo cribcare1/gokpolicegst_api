@@ -59,6 +59,7 @@ public class InvoiceMaster extends BaseModel {
 
     private String DifferenceReason;
     private String remarks;
+    @Column(name = "notification_details", columnDefinition = "TEXT")
     private String notificationDetails;
     private Boolean isShortfall=false;
 }
