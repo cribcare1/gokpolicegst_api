@@ -53,6 +53,9 @@ public class UserserviceImpl implements UserService {
 	private PasswordEncoder encoder;
 
     @Autowired
+    private OtpService otpService;
+
+    @Autowired
     private GSTRepository gstRepository;
     @Autowired
     private DdoGstMappingRepository ddoGstMappingRepository;
@@ -459,6 +462,7 @@ public Map<String, Object> createUserWithAdminCheck(UserRequest userRequest) {
 
             ddoGstMappingRepository.save(mapping);
         }
+        otpService.sendCredentialsEmail(loginResponse.getEmail(),loginResponse.getUserName(),user.getPassword());
 
         // ✅ 8️⃣ Return success response
         return Map.of(
@@ -603,7 +607,7 @@ public Map<String, Object> createUserWithAdminCheck(UserRequest userRequest) {
             return Map.of(
                     TdsDdoConstant.MESSAGE, "DDO user updated successfully",
                     TdsDdoConstant.STATUS, TdsDdoConstant.SUCCESS,
-                    TdsDdoConstant.LOGIN_RESPONSE, updatedUser.getId()
+                    TdsDdoConstant.LOGIN_RESPONSE, loginResponse
             );
 
         } catch (Exception e) {

@@ -3,12 +3,12 @@ package com.dvl.tdsddo.controller;
 
 import com.dvl.tdsddo.constatnt.TdsDdoConstant;
 import com.dvl.tdsddo.model.InvoiceMaster;
-import com.dvl.tdsddo.request.InvoiceRequest;
-import com.dvl.tdsddo.request.InvoiceSubmitRequest;
+import com.dvl.tdsddo.request.*;
 import com.dvl.tdsddo.response.InvoiceResponse;
 import com.dvl.tdsddo.service.InvoiceService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -72,6 +72,37 @@ public class InvoiceController {
             ));
         }
     }
+
+    @PostMapping("/shortfall")
+    public ResponseEntity<Map<String, Object>> createShortfallInvoice(
+           @RequestBody ShortfallRequest request) {
+
+        try {
+            InvoiceMaster shortfallInvoice =
+                    invoiceService.createShortfallInvoice(request.getInvoiceId(), request.getAmount());
+
+            return ResponseEntity.ok(Map.of(
+                    "status", TdsDdoConstant.SUCCESS,
+                    "message", "Shortfall invoice created successfully"
+            ));
+
+        } catch (RuntimeException ex) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "status", TdsDdoConstant.ERROR,
+                    "message", ex.getMessage()
+            ));
+
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "status", TdsDdoConstant.ERROR,
+                    "message", "Unable to create shortfall invoice",
+                    "error", ex.getMessage()
+            ));
+        }
+    }
+
+
+
 
     @PostMapping("/submit")
     public ResponseEntity<Map<String, Object>> submitInvoice(@RequestBody InvoiceSubmitRequest request) {
@@ -150,7 +181,7 @@ public class InvoiceController {
 
         try {
             //String invoiceNumber = invoiceService.generateInvoiceNumberWithoutTable(gstId, ddoId);
-            String invoiceNumber=  invoiceService.generateFinalInvoiceNumber(gstId, ddoId);
+            String invoiceNumber=  invoiceService.generateSubmittedInvoiceNumber(gstId, ddoId);
             response.put("status", "success");
             response.put(TdsDdoConstant.MESSAGE, "Invoice Number generated successfully");
             response.put("invoiceNumber", invoiceNumber);
@@ -199,12 +230,14 @@ public class InvoiceController {
     public ResponseEntity<Map<String, Object>> getInvoices(
             @RequestParam(required = false) Integer ddoId,
             @RequestParam(required = false) Integer gstId,
-            @RequestParam(required = false) String status
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false, defaultValue = "false") Boolean isShortfall
+
     ) {
 
 
 
-        List<InvoiceResponse> invoices = invoiceService.getInvoices(ddoId, gstId,  status);
+        List<InvoiceResponse> invoices = invoiceService.getInvoices(ddoId, gstId,  status,isShortfall);
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", TdsDdoConstant.SUCCESS);
@@ -213,6 +246,86 @@ public class InvoiceController {
         response.put("data", invoices);
 
         return ResponseEntity.ok(response);
+    }
+
+
+
+    @PostMapping("/generate-bulk-receipts")
+    public ResponseEntity<Map<String, Object>> generateBulkReceipts(
+             @RequestBody ReceiptGenerateRequest request) {
+
+        Map<String, Object> response = invoiceService.generateBulkReceiptNumbers(request);
+        return ResponseEntity.ok(response);
+    }
+
+
+    @PostMapping("/createBulkReceipts")
+    public ResponseEntity<Map<String, Object>> createBulkReceipts(
+            @RequestBody ReceiptBulkCreateRequest request) {
+
+        Map<String, Object> response = invoiceService.createBulkReceipts(request);
+        return ResponseEntity.ok(response);
+    }
+
+
+    @PostMapping("/updateInvoiceStatus/{invoiceId}/{status}")
+    public ResponseEntity<Map<String, Object>> updateInvoiceStatus(
+            @PathVariable Integer invoiceId,
+            @PathVariable String status) {
+
+        try {
+            Map<String, Object> response = invoiceService.deleteOrCancelInvoice(invoiceId, status);
+            return ResponseEntity.ok(response);
+
+        } catch (RuntimeException ex) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("status", "error");
+            error.put("message", ex.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+
+    }
+
+    @PostMapping("/shortfallList")
+    public ResponseEntity<Map<String, Object>> createShortfall(
+            @RequestBody List<ShortfallRequest> requests) {
+
+        try {
+
+            if (requests == null || requests.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "status", TdsDdoConstant.ERROR,
+                        "message", "Shortfall request list cannot be empty"
+                ));
+            }
+
+            invoiceService.createShortfallInvoices(requests);
+
+            return ResponseEntity.ok(Map.of(
+                    "status", TdsDdoConstant.SUCCESS,
+                    "message", "Shortfall invoices created successfully"
+            ));
+
+        }
+        catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "status", TdsDdoConstant.ERROR,
+                    "message", ex.getMessage()
+            ));
+        }
+        catch (RuntimeException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "status", TdsDdoConstant.ERROR,
+                    "message", ex.getMessage()
+            ));
+        }
+        catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "status", TdsDdoConstant.ERROR,
+                    "message", "Failed to create shortfall invoices",
+                    "error", ex.getMessage()
+            ));
+        }
     }
 
 }

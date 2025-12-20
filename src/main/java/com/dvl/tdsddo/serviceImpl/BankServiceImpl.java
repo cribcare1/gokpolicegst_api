@@ -201,40 +201,144 @@ public class BankServiceImpl implements BankService {
 
 
 
+//    @Override
+//    @Transactional
+//    public ApiResponse saveOrUpdateBankNew(BankDetailsRequest request) {
+//        try {
+//            GSTMaster gst=null;
+//            if (request!=null && request.getDdoId()==null){
+//                gst   = gstRepository.findById(request.getGstId())
+//                        .orElseThrow(() -> new RuntimeException("GST record not found"));
+//
+//            }
+//
+//            // 🔍 Validate GST
+//
+//            // 🔍 If NEW record → check duplicate
+//            if (request.getId() == null &&
+//                    bankDetailsRepository.existsByAccountNumberAndStatus(request.getAccountNumber(), TdsDdoConstant.ACTIVE)) {
+//
+//                return new ApiResponse(TdsDdoConstant.ERROR,
+//                        "Bank Account Number already exists", null);
+//            }
+//
+//            boolean isNewInsert = (request.getId() == null);
+//
+//            // ==============================================
+//            // 🟡 CASE 1: ADD NEW BANK
+//            // ==============================================
+//            if (isNewInsert) {
+//
+//                BankDetailsMaster newBank = new BankDetailsMaster();
+//                updateFields(newBank, request);   // Fill fields
+//                newBank.setStatus(TdsDdoConstant.ACTIVE);
+//                if(request.getDdoId()!=null){
+//                   newBank.setDdoId(request.getDdoId());
+//                }else{
+//                    newBank.setGstId(request.getGstId());
+//                }
+//
+//                BankDetailsMaster saved = bankDetailsRepository.save(newBank);
+//
+//                // AUDIT
+//                userService.saveAuditLogAsync(
+//                        "bank_details_master",
+//                        saved.getId().toString(),
+//                        null, null, null,
+//                        "INSERT",
+//                        request.getCreatedBy()
+//                );
+//
+//                return new ApiResponse(
+//                        TdsDdoConstant.SUCCESS,
+//                        "Bank Added Successfully",
+//                        saved
+//                );
+//            }
+//
+//            // ==============================================
+//            // 🟢 CASE 2: EDIT – Deactivate Old + Insert New
+//            // ==============================================
+//            BankDetailsMaster oldBank = bankDetailsRepository.findById(request.getId())
+//                    .orElseThrow(() -> new RuntimeException("Bank record not found"));
+//
+//            // ❌ Deactivate OLD record
+//            oldBank.setStatus(TdsDdoConstant.INACTIVE);
+//            bankDetailsRepository.save(oldBank);
+//
+//            // 🟢 Create NEW record with updated values
+//            BankDetailsMaster newBank = new BankDetailsMaster();
+//            copyOldValues(newBank,oldBank);
+//            updateFields(newBank, request);
+//
+//            newBank.setId(null);                     // force new insert
+//            newBank.setStatus(TdsDdoConstant.ACTIVE);
+//            newBank.setGstId(oldBank.getGstId());    // keep same GST
+//            newBank.setDdoId(oldBank.getDdoId());    //Keep same DDOId
+//
+//            BankDetailsMaster savedNew = bankDetailsRepository.save(newBank);
+//
+//            // AUDIT (difference between oldBank and newBank)
+//            logIfChanged("bankName", oldBank.getBankName(), newBank.getBankName(), savedNew, request.getCreatedBy());
+//            logIfChanged("branchName", oldBank.getBranchName(), newBank.getBranchName(), savedNew, request.getCreatedBy());
+//            logIfChanged("accountNumber", oldBank.getAccountNumber(), newBank.getAccountNumber(), savedNew, request.getCreatedBy());
+//            logIfChanged("accountType", oldBank.getAccountType(), newBank.getAccountType(), savedNew, request.getCreatedBy());
+//            logIfChanged("accountName", oldBank.getAccountName(), newBank.getAccountName(), savedNew, request.getCreatedBy());
+//            logIfChanged("ifscCode", oldBank.getIfscCode(), newBank.getIfscCode(), savedNew, request.getCreatedBy());
+//            logIfChanged("micrCode", oldBank.getMicrCode(), newBank.getMicrCode(), savedNew, request.getCreatedBy());
+//
+//            // You are not changing GST in edit, so no GST audit required.
+//
+//            return new ApiResponse(
+//                    TdsDdoConstant.SUCCESS,
+//                    "Bank Updated Successfully",
+//                    savedNew
+//            );
+//
+//        } catch (Exception e) {
+//            return new ApiResponse(TdsDdoConstant.ERROR, e.getMessage(), null);
+//        }
+//    }
+
+
     @Override
     @Transactional
     public ApiResponse saveOrUpdateBankNew(BankDetailsRequest request) {
         try {
-            GSTMaster gst=null;
-            if (request!=null && request.getDdoId()==null){
-                gst   = gstRepository.findById(request.getGstId())
-                        .orElseThrow(() -> new RuntimeException("GST record not found"));
-
-            }
-
-            // 🔍 Validate GST
-
-            // 🔍 If NEW record → check duplicate
-            if (request.getId() == null &&
-                    bankDetailsRepository.existsByAccountNumberAndStatus(request.getAccountNumber(), TdsDdoConstant.ACTIVE)) {
-
-                return new ApiResponse(TdsDdoConstant.ERROR,
-                        "Bank Account Number already exists", null);
-            }
 
             boolean isNewInsert = (request.getId() == null);
 
-            // ==============================================
-            // 🟡 CASE 1: ADD NEW BANK
-            // ==============================================
+            // ========================================================
+            // 🟡 CASE 1: CREATE NEW BANK
+            // ========================================================
             if (isNewInsert) {
 
+                // 🔍 GST VALIDATION ONLY FOR CREATE
+                if (request.getDdoId() == null) {
+                    gstRepository.findById(request.getGstId())
+                            .orElseThrow(() -> new RuntimeException("GST record not found"));
+                }
+
+                // 🔍 Duplicate account validation
+                if (bankDetailsRepository.existsByAccountNumberAndStatus(
+                        request.getAccountNumber(),
+                        TdsDdoConstant.ACTIVE
+                )) {
+                    return new ApiResponse(
+                            TdsDdoConstant.ERROR,
+                            "Bank Account Number already exists",
+                            null
+                    );
+                }
+
                 BankDetailsMaster newBank = new BankDetailsMaster();
-                updateFields(newBank, request);   // Fill fields
+                updateFields(newBank, request);
                 newBank.setStatus(TdsDdoConstant.ACTIVE);
-                if(request.getDdoId()!=null){
-                   newBank.setDdoId(request.getDdoId());
-                }else{
+
+                // Set GST/DDO
+                if (request.getDdoId() != null) {
+                    newBank.setDdoId(request.getDdoId());
+                } else {
                     newBank.setGstId(request.getGstId());
                 }
 
@@ -256,29 +360,34 @@ public class BankServiceImpl implements BankService {
                 );
             }
 
-            // ==============================================
-            // 🟢 CASE 2: EDIT – Deactivate Old + Insert New
-            // ==============================================
+            // ========================================================
+            // 🟢 CASE 2: UPDATE — Versioning Logic
+            // ========================================================
+
+            // Fetch existing active record
             BankDetailsMaster oldBank = bankDetailsRepository.findById(request.getId())
                     .orElseThrow(() -> new RuntimeException("Bank record not found"));
 
-            // ❌ Deactivate OLD record
+            // Deactivate OLD
             oldBank.setStatus(TdsDdoConstant.INACTIVE);
             bankDetailsRepository.save(oldBank);
 
-            // 🟢 Create NEW record with updated values
+            // Create NEW Version
             BankDetailsMaster newBank = new BankDetailsMaster();
-            copyOldValues(newBank,oldBank);
-            updateFields(newBank, request);
+            copyOldValues(newBank, oldBank);  // bring forward all old values
 
-            newBank.setId(null);                     // force new insert
+            updateFields(newBank, request);   // override only provided fields
+
+            newBank.setId(null);              // force new insert
             newBank.setStatus(TdsDdoConstant.ACTIVE);
-            newBank.setGstId(oldBank.getGstId());    // keep same GST
-            newBank.setDdoId(oldBank.getDdoId());    //Keep same DDOId
+
+            // Keep same GST + DDO (NO NEW VALIDATION)
+            newBank.setGstId(oldBank.getGstId());
+            newBank.setDdoId(oldBank.getDdoId());
 
             BankDetailsMaster savedNew = bankDetailsRepository.save(newBank);
 
-            // AUDIT (difference between oldBank and newBank)
+            // AUDIT — field level change logs
             logIfChanged("bankName", oldBank.getBankName(), newBank.getBankName(), savedNew, request.getCreatedBy());
             logIfChanged("branchName", oldBank.getBranchName(), newBank.getBranchName(), savedNew, request.getCreatedBy());
             logIfChanged("accountNumber", oldBank.getAccountNumber(), newBank.getAccountNumber(), savedNew, request.getCreatedBy());
@@ -286,8 +395,6 @@ public class BankServiceImpl implements BankService {
             logIfChanged("accountName", oldBank.getAccountName(), newBank.getAccountName(), savedNew, request.getCreatedBy());
             logIfChanged("ifscCode", oldBank.getIfscCode(), newBank.getIfscCode(), savedNew, request.getCreatedBy());
             logIfChanged("micrCode", oldBank.getMicrCode(), newBank.getMicrCode(), savedNew, request.getCreatedBy());
-
-            // You are not changing GST in edit, so no GST audit required.
 
             return new ApiResponse(
                     TdsDdoConstant.SUCCESS,
@@ -299,18 +406,45 @@ public class BankServiceImpl implements BankService {
             return new ApiResponse(TdsDdoConstant.ERROR, e.getMessage(), null);
         }
     }
-    private void updateFields(BankDetailsMaster bank, BankDetailsRequest request) {
-        if (request.getBankName() != null) bank.setBankName(request.getBankName());
-        if (request.getBranchName() != null) bank.setBranchName(request.getBranchName());
-        if (request.getAccountNumber() != null) bank.setAccountNumber(request.getAccountNumber());
-        if (request.getAccountType() != null) bank.setAccountType(request.getAccountType());
-        if (request.getAccountName() != null) bank.setAccountName(request.getAccountName());
-        if (request.getIfscCode() != null) bank.setIfscCode(request.getIfscCode());
-        if (request.getMicrCode() != null) bank.setMicrCode(request.getMicrCode());
-        if (request.getGstId() != null) bank.setGstId(request.getGstId());
-        if (request.getDdoId() != null) bank.setDdoId(request.getDdoId());
 
+//    private void updateFields(BankDetailsMaster bank, BankDetailsRequest request) {
+//        if (request.getBankName() != null) bank.setBankName(request.getBankName());
+//        if (request.getBranchName() != null) bank.setBranchName(request.getBranchName());
+//        if (request.getAccountNumber() != null) bank.setAccountNumber(request.getAccountNumber());
+//        if (request.getAccountType() != null) bank.setAccountType(request.getAccountType());
+//        if (request.getAccountName() != null) bank.setAccountName(request.getAccountName());
+//        if (request.getIfscCode() != null) bank.setIfscCode(request.getIfscCode());
+//        if (request.getMicrCode() != null) bank.setMicrCode(request.getMicrCode());
+//        if (request.getGstId() != null) bank.setGstId(request.getGstId());
+//        if (request.getDdoId() != null) bank.setDdoId(request.getDdoId());
+
+//    }
+
+
+    private void updateFields(BankDetailsMaster bank, BankDetailsRequest request) {
+
+        if (request.getBankName() != null)
+            bank.setBankName(request.getBankName());
+
+        if (request.getBranchName() != null)
+            bank.setBranchName(request.getBranchName());
+
+        if (request.getAccountNumber() != null)
+            bank.setAccountNumber(request.getAccountNumber());
+
+        if (request.getAccountType() != null)
+            bank.setAccountType(request.getAccountType());
+
+        if (request.getAccountName() != null)
+            bank.setAccountName(request.getAccountName());
+
+        if (request.getIfscCode() != null)
+            bank.setIfscCode(request.getIfscCode());
+
+        if (request.getMicrCode() != null)
+            bank.setMicrCode(request.getMicrCode());
     }
+
 
     private void copyOldValues(BankDetailsMaster target, BankDetailsMaster source) {
         target.setBankName(source.getBankName());
