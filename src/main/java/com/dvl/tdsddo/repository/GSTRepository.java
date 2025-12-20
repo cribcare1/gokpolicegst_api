@@ -40,7 +40,7 @@ public interface GSTRepository extends JpaRepository<GSTMaster,Integer> {
         )
         FROM GSTMaster g
          JOIN User u ON u.id = g.userId
-        LEFT JOIN DdoGStMapping d ON d.fromGst = g.id AND d.status = 'active'
+        LEFT JOIN DdoGStMapping d ON d.toGST = g.id AND d.status = 'active'
         WHERE g.status = 'active'
         GROUP BY 
             u.id, u.email, u.address, u.mobileNumber, u.city, u.pinCode,
