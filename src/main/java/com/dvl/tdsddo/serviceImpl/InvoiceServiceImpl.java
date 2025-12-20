@@ -1346,6 +1346,19 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
         // 6️⃣ Save all
         invoiceRepo.saveAll(invoiceMap.values());
 
+        List<ShortfallRequest> shortfallRequests = new ArrayList<>();
+        for (ReceiptCreationRequest r : request.getReceipts()){
+            if(r.getDifferenceReason().equalsIgnoreCase("Shortfall Payment")){
+                ShortfallRequest shortfallRequest = new ShortfallRequest();
+                shortfallRequest.setInvoiceId(r.getInvoiceId());
+                shortfallRequest.setAmount(Double.valueOf(r.getDifferenceAmount()));
+                shortfallRequests.add(shortfallRequest);
+            }
+        }
+
+        if(!shortfallRequests.isEmpty()){
+            createShortfallInvoices(shortfallRequests);
+        }
         response.put("status", "success");
         response.put("message", "Receipts created and invoices updated successfully");
         response.put("updatedInvoices", updatedInvoices);
