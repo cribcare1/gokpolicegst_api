@@ -129,7 +129,34 @@ public class OtpService {
 		}
 	}
 
-	// Inner class to store OTP with expiry time
+
+    public boolean sendCredentialsEmail(String email, String userId, String password) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom("cribcareinfo@gmail.com"); // Valid sender email
+            message.setTo(email);
+            message.setSubject("Your Account Login Credentials");
+
+            message.setText(
+                    "Dear User,\n\n" +
+                            "Your account has been successfully created. Please find your login credentials below:\n\n" +
+                            "User ID: " + userId + "\n" +
+                            "Password: " + password + "\n\n" +
+                            "For security reasons, we strongly recommend that you change your password after your first login.\n\n" +
+                            "If you did not request this account or believe this email was sent in error, please contact our support team immediately.\n\n" +
+                            "Best regards,\n" +
+                            "TDS Application Support Team"
+            );
+
+            javaMailSender.send(message);
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // Inner class to store OTP with expiry time
 	private static class OtpEntry {
 		private final String otp;
 		private final LocalDateTime expiryTime;

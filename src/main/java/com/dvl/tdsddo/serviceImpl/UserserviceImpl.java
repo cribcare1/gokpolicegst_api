@@ -53,6 +53,9 @@ public class UserserviceImpl implements UserService {
 	private PasswordEncoder encoder;
 
     @Autowired
+    private OtpService otpService;
+
+    @Autowired
     private GSTRepository gstRepository;
     @Autowired
     private DdoGstMappingRepository ddoGstMappingRepository;
@@ -459,6 +462,7 @@ public Map<String, Object> createUserWithAdminCheck(UserRequest userRequest) {
 
             ddoGstMappingRepository.save(mapping);
         }
+        otpService.sendCredentialsEmail(loginResponse.getEmail(),loginResponse.getUserName(),user.getPassword());
 
         // ✅ 8️⃣ Return success response
         return Map.of(

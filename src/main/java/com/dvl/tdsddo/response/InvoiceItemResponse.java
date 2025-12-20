@@ -12,10 +12,12 @@ import java.math.BigDecimal;
 public class InvoiceItemResponse {
     private Integer itemId;
     private Integer hsnId;
+    private String hsnCode;
     private String serviceName;
     private BigDecimal quantity;
     private BigDecimal rate;
     private BigDecimal amount;
+
     private BigDecimal cgstRate;
     private BigDecimal sgstRate;
     private BigDecimal igstRate;

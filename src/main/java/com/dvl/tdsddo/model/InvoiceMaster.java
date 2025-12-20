@@ -59,4 +59,6 @@ public class InvoiceMaster extends BaseModel {
 
     private String DifferenceReason;
     private String remarks;
+    private String notificationDetails;
+    private Boolean isShortfall=false;
 }

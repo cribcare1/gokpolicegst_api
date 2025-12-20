@@ -36,6 +36,7 @@ public class InvoiceRequest {
 
     private Double paidAmount;
     private Double balanceAmount;
+    private String notificationDetails;
 
     private List<InvoiceItemRequest> items;
 

@@ -79,7 +79,7 @@ public interface UserRepository extends JpaRepository<User, Integer> {
             WHERE u.status = 'active' AND u.role = 'DDO' AND d.toGST = :gstId AND d.status = 'active'),
         (SELECT COUNT(g) FROM GSTMaster g WHERE g.status = 'active' AND g.id = :gstId),
         (SELECT COUNT(h) FROM HSNMaster h WHERE h.status = 'active' AND h.gstId = :gstId),
-        (SELECT COUNT(i) FROM InvoiceMaster i WHERE i.gstId = :gstId AND i.invoiceStatus = 'SAVE'),
+        (SELECT COUNT(i) FROM InvoiceMaster i WHERE i.gstId = :gstId AND i.invoiceStatus = 'SAVED'),
         (SELECT COUNT(i) FROM InvoiceMaster i WHERE i.gstId = :gstId AND i.invoiceStatus = 'SUBMITTED')
     )
 """)

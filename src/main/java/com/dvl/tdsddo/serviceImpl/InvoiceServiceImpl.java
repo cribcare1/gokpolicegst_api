@@ -61,6 +61,7 @@ public class InvoiceServiceImpl implements InvoiceService {
                     .balanceAmount(0.0)
                     .invoiceDate(TdsUtil.changeCurrentTimeToLocalDateTimeFromGmtToISTLocal().toLocalDate().toString())
                     .financialYear(financialYear)
+                    .notificationDetails(req.getNotificationDetails())
                     .status("pending")
                     .build();
         }
@@ -191,6 +192,116 @@ public class InvoiceServiceImpl implements InvoiceService {
         }
 
         return invoice;
+    }
+
+
+    @Transactional
+    @Override
+    public InvoiceMaster createShortfallInvoice(Integer parentInvoiceId,Double totalAmount) {
+
+        InvoiceMaster parent = invoiceRepo.findById(parentInvoiceId)
+                .orElseThrow(() -> new RuntimeException("Parent invoice not found"));
+
+        // ---------------------------
+        // CLONE INVOICE MASTER
+        // ---------------------------
+        InvoiceMaster shortfall = InvoiceMaster.builder()
+                .invoiceNumber(parent.getInvoiceNumber()) // SAME
+                .ddoId(parent.getDdoId())
+                .gstId(parent.getGstId())
+                .bankId(parent.getBankId())
+                .customerId(parent.getCustomerId())
+                .receiptNumber(parent.getReceiptNumber())
+                .paymentType(parent.getPaymentType())
+                .referenceNumber(parent.getReferenceNumber())
+                .paidDate(parent.getPaidDate())
+                .invoiceDate(parent.getInvoiceDate())
+                .finalInvoiceNumber(parent.getFinalInvoiceNumber())
+                .submittedDate(parent.getSubmittedDate())
+                .signPath(parent.getSignPath())
+                .gstType(parent.getGstType())
+                .financialYear(parent.getFinancialYear())
+                .invoiceStatus("SAVED")
+                .totalAmount(totalAmount)
+                .totalIgst(parent.getTotalIgst())
+                .totalCgst(parent.getTotalCgst())
+                .totalSgst(parent.getTotalSgst())
+                .grandTotal(parent.getGrandTotal())
+                .paidAmount(0.0)
+                .balanceAmount(0.0)
+                .remarks(parent.getRemarks())
+                .notificationDetails(parent.getNotificationDetails())
+                .status("pending")
+                .isShortfall(true)
+                .build();
+
+        shortfall = invoiceRepo.save(shortfall);
+
+        // ---------------------------
+        // CLONE ITEMS
+        // ---------------------------
+        List<InvoiceItem> parentItems = itemRepo.findAllById(parent.getId());
+        for (InvoiceItem item : parentItems) {
+            InvoiceItem copy = InvoiceItem.builder()
+                    .invoiceId(shortfall.getId())
+                    .hsnId(item.getHsnId())
+                    .serviceName(item.getServiceName())
+                    .quantity(item.getQuantity())
+                    .rate(item.getRate())
+                    .amount(item.getAmount())
+                    .cgstRate(item.getCgstRate())
+                    .sgstRate(item.getSgstRate())
+                    .igstRate(item.getIgstRate())
+                    .cgstValue(item.getCgstValue())
+                    .sgstValue(item.getSgstValue())
+                    .igstValue(item.getIgstValue())
+                    .build();
+            itemRepo.save(copy);
+        }
+
+        // ---------------------------
+        // CLONE GST SNAPSHOT
+        // ---------------------------
+        InvoiceMaster finalShortfall = shortfall;
+        gstSnapshotRepo.findByInvoiceId(parent.getId()).ifPresent(gs -> {
+            GSTSnapshot copy = new GSTSnapshot();
+            copy.setInvoiceId(finalShortfall.getId());
+            copy.setGstName(gs.getGstName());
+            copy.setGstNumber(gs.getGstNumber());
+            copy.setStateCode(gs.getStateCode());
+            copy.setGstHolderName(gs.getGstHolderName());
+            gstSnapshotRepo.save(copy);
+        });
+
+        // ---------------------------
+        // CLONE BANK SNAPSHOT
+        // ---------------------------
+        InvoiceMaster finalShortfall1 = shortfall;
+        bankSnapshotRepo.findByInvoiceId(parent.getId()).ifPresent(bs -> {
+            BankSnapshot copy = new BankSnapshot();
+            copy.setInvoiceId(finalShortfall1.getId());
+            copy.setBankName(bs.getBankName());
+            copy.setBranchName(bs.getBranchName());
+            copy.setAccountNumber(bs.getAccountNumber());
+            copy.setIfscCode(bs.getIfscCode());
+            bankSnapshotRepo.save(copy);
+        });
+
+        // ---------------------------
+        // CLONE CREDIT NOTE (IF EXISTS)
+        // ---------------------------
+        InvoiceMaster finalShortfall2 = shortfall;
+        creditNoteRepo.findByInvoiceId(parent.getId()).ifPresent(cn -> {
+            CreditNote copy = new CreditNote();
+            copy.setInvoiceId(finalShortfall2.getId());
+            copy.setCreditNoteNumber(cn.getCreditNoteNumber());
+            copy.setCreditNoteAmount(cn.getCreditNoteAmount());
+            copy.setMismatchAmount(cn.getMismatchAmount());
+            copy.setReason(cn.getReason());
+            creditNoteRepo.save(copy);
+        });
+
+        return shortfall;
     }
 
 
@@ -874,10 +985,10 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
 //    }
 
     @Override
-    public List<InvoiceResponse> getInvoices(Integer ddoId, Integer gstId,  String status) {
+    public List<InvoiceResponse> getInvoices(Integer ddoId, Integer gstId,  String status,Boolean isShortfall) {
 
         try {
-            List<Object[]> result = invoiceRepo.fetchInvoices(ddoId, gstId,  status);
+            List<Object[]> result = invoiceRepo.fetchInvoices(ddoId, gstId,  status,isShortfall);
 
             if (result == null || result.isEmpty()) {
                 throw new ResourceNotFoundException("No invoices found for given filters!");
@@ -893,6 +1004,8 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
                 CustomerMaster cust = (CustomerMaster) row[3];
                 CreditNote cn = (CreditNote) row[4];
                 InvoiceItem item = (InvoiceItem) row[5];
+                HSNMaster hsn = (HSNMaster) row[6];
+
 
                 if (inv == null) continue;
 
@@ -914,6 +1027,7 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
                                 .paymentReferenceNumber(inv.getReferenceNumber())
                                 .remarks(inv.getRemarks())
                                 .status(inv.getStatus())
+                                .notificationDetails(inv.getNotificationDetails())
                                 .totalAmount(BigDecimal.valueOf(inv.getTotalAmount() == null ? 0.0 : inv.getTotalAmount()))
                                 .totalCgst(BigDecimal.valueOf(inv.getTotalCgst() == null ? 0.0 : inv.getTotalCgst()))
                                 .totalSgst(BigDecimal.valueOf(inv.getTotalSgst() == null ? 0.0 : inv.getTotalSgst()))
@@ -949,8 +1063,10 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
                     dto.setCustomerResponse(new CustomerResponse(
                             cust.getId(),
                             cust.getCustomerName(),
-                            cust.getServiceType()
-//                            cust.getBillingAddress()
+                            cust.getServiceType(),
+                            cust.getStateCode(),
+                            cust.getGstNumber(),
+                            cust.getAddress()
                     ));
                 }
 
@@ -963,6 +1079,24 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
                     ));
                 }
 
+//                if (item != null) {
+//                    dto.getItems().add(
+//                            InvoiceItemResponse.builder()
+//                                    .itemId(item.getId())
+//                                    .hsnId(item.getHsnId())
+//                                    .serviceName(item.getServiceName())
+//                                    .quantity(item.getQuantity())
+//                                    .rate(item.getRate())
+//                                    .amount(item.getAmount())
+//                                    .cgstRate(item.getCgstRate())
+//                                    .sgstRate(item.getSgstRate())
+//                                    .igstRate(item.getIgstRate())
+//                                    .cgstValue(item.getCgstValue())
+//                                    .sgstValue(item.getSgstValue())
+//                                    .igstValue(item.getIgstValue())
+//                                    .build()
+//                    );
+//                }
                 if (item != null) {
                     dto.getItems().add(
                             InvoiceItemResponse.builder()
@@ -978,9 +1112,13 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
                                     .cgstValue(item.getCgstValue())
                                     .sgstValue(item.getSgstValue())
                                     .igstValue(item.getIgstValue())
+
+                                    // ✅ HSN mapping
+                                    .hsnCode(hsn != null ? hsn.getHsnCode() : null)
                                     .build()
                     );
                 }
+
             }
 
             return new ArrayList<>(map.values());
@@ -1196,7 +1334,7 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
             invoice.setPaidAmount(r.getAmountPaid());
             invoice.setBalanceAmount(invoice.getGrandTotal() - r.getAmountPaid());
 
-            invoice.setInvoiceStatus("RECEIPT");
+            invoice.setInvoiceStatus("SUBMITTED");
 
             // Response item
             Map<String, String> map = new HashMap<>();
@@ -1223,12 +1361,13 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
         InvoiceMaster invoice = invoiceRepo.findById(invoiceId)
                 .orElseThrow(() -> new RuntimeException("Invoice not found with ID: " + invoiceId));
         if(status.equalsIgnoreCase("cancel")){
-            invoice.setInvoiceStatus("cancel");
+            invoice.setTotalAmount(0.0);
+            invoice.setStatus("cancel");
             invoiceRepo.save(invoice);
             response.put("message", "Invoice cancelled successfully.");
             response.put("status", "success");
         } else if(status.equalsIgnoreCase("delete")){
-            invoice.setInvoiceStatus("delete");
+            invoice.setStatus("delete");
             invoiceRepo.save(invoice);
             response.put("message", "Invoice deleted successfully.");
             response.put("status", "success");
@@ -1579,6 +1718,156 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
 //
 //        return response;
 //    }
+
+
+
+
+
+    @Transactional
+    @Override
+    public void createShortfallInvoices(List<ShortfallRequest> requests) {
+
+        Map<Integer, Double> amountMap = requests.stream()
+                .collect(Collectors.toMap(
+                        ShortfallRequest::getInvoiceId,
+                        ShortfallRequest::getAmount
+                ));
+
+        List<Integer> invoiceIds = new ArrayList<>(amountMap.keySet());
+
+        List<Object[]> rows =
+                invoiceRepo.fetchInvoicesForShortfall(invoiceIds);
+
+        if (rows.isEmpty()) {
+            throw new RuntimeException("No invoices found");
+        }
+
+        // Group data by invoiceId
+        Map<Integer, List<Object[]>> grouped =
+                rows.stream().collect(Collectors.groupingBy(
+                        r -> ((InvoiceMaster) r[0]).getId()
+                ));
+
+        List<InvoiceMaster> invoicesToSave = new ArrayList<>();
+        List<InvoiceItem> itemsToSave = new ArrayList<>();
+        List<GSTSnapshot> gstToSave = new ArrayList<>();
+        List<BankSnapshot> bankToSave = new ArrayList<>();
+        List<CreditNote> creditToSave = new ArrayList<>();
+
+        for (Map.Entry<Integer, List<Object[]>> entry : grouped.entrySet()) {
+
+            Integer parentId = entry.getKey();
+            List<Object[]> data = entry.getValue();
+
+            InvoiceMaster parent = (InvoiceMaster) data.get(0)[0];
+            Double shortfallAmount = amountMap.get(parentId);
+
+            if (shortfallAmount == null) continue;
+
+            // ---------------------------
+            // CREATE SHORTFALL INVOICE
+            // ---------------------------
+            InvoiceMaster shortfall = InvoiceMaster.builder()
+                    .invoiceNumber(parent.getInvoiceNumber())
+                    .ddoId(parent.getDdoId())
+                    .gstId(parent.getGstId())
+                    .bankId(parent.getBankId())
+                    .customerId(parent.getCustomerId())
+                    .invoiceDate(parent.getInvoiceDate())
+                    .gstType(parent.getGstType())
+                    .financialYear(parent.getFinancialYear())
+                    .invoiceStatus("SAVED")
+                    .totalAmount(shortfallAmount)
+                    .totalIgst(parent.getTotalIgst())
+                    .totalCgst(parent.getTotalCgst())
+                    .totalSgst(parent.getTotalSgst())
+                    .grandTotal(parent.getGrandTotal())
+                    .paidAmount(0.0)
+                    .balanceAmount(0.0)
+                    .remarks(parent.getRemarks())
+                    .notificationDetails(parent.getNotificationDetails())
+                    .status("pending")
+                    .isShortfall(true)
+                    .build();
+
+            invoicesToSave.add(shortfall);
+
+            // ---------------------------
+            // ITEMS
+            // ---------------------------
+            for (Object[] row : data) {
+                InvoiceItem item = (InvoiceItem) row[4];
+                if (item != null) {
+                    itemsToSave.add(InvoiceItem.builder()
+                            .invoiceId(shortfall.getId()) // set later
+                            .hsnId(item.getHsnId())
+                            .serviceName(item.getServiceName())
+                            .quantity(item.getQuantity())
+                            .rate(item.getRate())
+                            .amount(item.getAmount())
+                            .cgstRate(item.getCgstRate())
+                            .sgstRate(item.getSgstRate())
+                            .igstRate(item.getIgstRate())
+                            .cgstValue(item.getCgstValue())
+                            .sgstValue(item.getSgstValue())
+                            .igstValue(item.getIgstValue())
+                            .build());
+                }
+            }
+
+            // ---------------------------
+            // SNAPSHOTS (ONCE)
+            // ---------------------------
+            Object[] first = data.get(0);
+
+            if (first[1] != null) {
+                GSTSnapshot gs = (GSTSnapshot) first[1];
+                gstToSave.add(new GSTSnapshot(
+                        null,
+                        shortfall.getId(),
+                        gs.getGstName(),
+                        gs.getGstNumber(),
+                        gs.getStateCode(),
+                        gs.getGstHolderName()
+                ));
+            }
+
+            if (first[2] != null) {
+                BankSnapshot bs = (BankSnapshot) first[2];
+                bankToSave.add(new BankSnapshot(
+                        null,
+                        shortfall.getId(),
+                        bs.getBankName(),
+                        bs.getBranchName(),
+                        bs.getAccountNumber(),
+                        bs.getIfscCode()
+                ));
+            }
+
+            if (first[3] != null) {
+                CreditNote cn = (CreditNote) first[3];
+                creditToSave.add(new CreditNote(
+                        null,
+                        shortfall.getId(),
+                        cn.getCreditNoteNumber(),
+                        cn.getCreditNoteAmount(),
+                        cn.getMismatchAmount(),
+                        cn.getReason()
+                ));
+            }
+        }
+
+        // ---------------------------
+        // SAVE EVERYTHING (BATCH)
+        // ---------------------------
+        invoiceRepo.saveAll(invoicesToSave);
+
+        itemRepo.saveAll(itemsToSave);
+        gstSnapshotRepo.saveAll(gstToSave);
+        bankSnapshotRepo.saveAll(bankToSave);
+        creditNoteRepo.saveAll(creditToSave);
+    }
+
 
 }
 

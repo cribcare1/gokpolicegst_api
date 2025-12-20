@@ -36,6 +36,7 @@ public class GSTServiceImpl implements GSTService {
     private final PasswordEncoder passwordEncoder;
     private final DdoGstMappingRepository ddoGstMappingRepository;
     private final FileServiceUtil fileServiceUtil;
+    private final OtpService otpService;
 
     @Override
     public ApiResponse saveOrUpdateGSTNew(GSTMasterRequest request) {
@@ -202,6 +203,7 @@ public class GSTServiceImpl implements GSTService {
                 user.setStatus(TdsDdoConstant.ACTIVE);
                 user.setUserName(username);
                 user.setPassword(passwordEncoder.encode(rawPassword));
+
             }
 
             // Update user fields only if present
@@ -247,6 +249,9 @@ public class GSTServiceImpl implements GSTService {
             String message = isUpdate ? "GST Master updated successfully"
                     : (existingGST != null ? "GST Master reactivated successfully" : "GST Master created successfully");
 
+            if(message.equalsIgnoreCase("GST Master created successfully")){
+                otpService.sendCredentialsEmail(res.getEmail(),user.getUserName(),rawPassword);
+            }
             return new ApiResponse(TdsDdoConstant.SUCCESS, message, res);
         } catch (DataIntegrityViolationException ex) {
             if (ex.getMessage() != null && ex.getMessage().contains("gst_number")) {
