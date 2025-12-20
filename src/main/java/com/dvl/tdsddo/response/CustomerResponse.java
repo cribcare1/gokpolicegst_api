@@ -13,4 +13,7 @@ public class CustomerResponse {
     private Integer id;
     private String name;
     private String type;
+    private String sateCode;
+    private String gstNumber;
+    private String address;
 }

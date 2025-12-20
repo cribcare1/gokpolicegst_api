@@ -8,7 +8,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import software.amazon.awssdk.services.s3.endpoints.internal.Value;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 public interface GSTRepository extends JpaRepository<GSTMaster,Integer> {
     GSTMaster findByGstNumber(@NotBlank(message = "GST number is required") @Pattern(regexp = "^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$",
@@ -49,4 +51,6 @@ public interface GSTRepository extends JpaRepository<GSTMaster,Integer> {
 
     @Query("SELECT g.panId FROM GSTMaster g WHERE g.status = 'active'")
     List<Integer> findAllPanIdsWithActiveGST();
+
+    List<GSTMaster> findByIdIn(Set<Integer> ids);
 }
