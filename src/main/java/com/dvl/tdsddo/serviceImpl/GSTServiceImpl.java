@@ -186,11 +186,13 @@ public class GSTServiceImpl implements GSTService {
             if (notBlank(request.getGstHolderName())) gstMaster.setGstHolderName(request.getGstHolderName());
             if (notBlank(request.getGstNumber())) gstMaster.setGstNumber(request.getGstNumber());
             if (request.getStateCode() != null) gstMaster.setStateCode(request.getStateCode());
+            if (request.getPanId() != null) gstMaster.setPanId(request.getPanId());
+
 
             // ===================== 🔹 USER HANDLING =====================
             String username = gstMaster.getGstNumber();
             String rawPassword=null;
-            if(request.getPassword()!=null || !request.getPassword().isEmpty()){
+            if(request.getPassword()!=null && !request.getPassword().isEmpty()){
                 rawPassword=passwordEncoder.encode(request.getPassword());
             }else {
                 rawPassword = generatePasswordFromGST(username);
