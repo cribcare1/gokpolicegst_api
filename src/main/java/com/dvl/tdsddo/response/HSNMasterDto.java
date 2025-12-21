@@ -1,8 +1,10 @@
 package com.dvl.tdsddo.response;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @AllArgsConstructor
@@ -17,6 +19,12 @@ public class HSNMasterDto {
     private String cgst;
     private String sgst;
     private String gstNumber;
-    private LocalDateTime effectiveDate;
+
+    @JsonFormat(pattern = "dd-MM-yyyy")
+    private LocalDate effectiveFrom;
+
+    @JsonFormat(pattern = "dd-MM-yyyy")
+    private LocalDate effectiveTo;
+
     private Boolean isEditable;
 }

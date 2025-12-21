@@ -43,7 +43,8 @@ public interface HSNRepository extends JpaRepository<HSNMaster,Integer> {
         h.cgst,
         h.sgst,
         g.gstNumber,
-        h.updatedDate,
+        h.effectiveFrom,
+        h.effectiveTo,
         CASE 
             WHEN (EXISTS (
                 SELECT 1 
@@ -71,7 +72,8 @@ public interface HSNRepository extends JpaRepository<HSNMaster,Integer> {
         h.cgst,
         h.sgst,
         g.gstNumber,
-        h.updatedDate,
+        h.effectiveFrom,
+        h.effectiveTo,
         CASE 
             WHEN (EXISTS (
                 SELECT 1 

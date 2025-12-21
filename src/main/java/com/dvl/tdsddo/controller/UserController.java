@@ -44,7 +44,7 @@ public class UserController {
     }
 
     @PostMapping("/delete-ddo/{userId}")
-    public Map<String, Object> deleteDdoById( @PathVariable Integer ddoUserId){
+    public Map<String, Object> deleteDdoById( @PathVariable(name = "userId") Integer ddoUserId){
         return userService.deleteDdoById(ddoUserId);
     }
 

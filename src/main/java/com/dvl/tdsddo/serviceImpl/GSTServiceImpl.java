@@ -186,11 +186,17 @@ public class GSTServiceImpl implements GSTService {
             if (notBlank(request.getGstHolderName())) gstMaster.setGstHolderName(request.getGstHolderName());
             if (notBlank(request.getGstNumber())) gstMaster.setGstNumber(request.getGstNumber());
             if (request.getStateCode() != null) gstMaster.setStateCode(request.getStateCode());
+            if (request.getPanId() != null) gstMaster.setPanId(request.getPanId());
+
 
             // ===================== 🔹 USER HANDLING =====================
             String username = gstMaster.getGstNumber();
-            String rawPassword = generatePasswordFromGST(username);
-
+            String rawPassword=null;
+            if(request.getPassword()!=null && !request.getPassword().isEmpty()){
+                rawPassword=passwordEncoder.encode(request.getPassword());
+            }else {
+                rawPassword = generatePasswordFromGST(username);
+            }
             User user = null;
             if (gstMaster.getUserId() != null) {
                 user = userRepository.findById(gstMaster.getUserId()).orElse(new User());
@@ -213,6 +219,8 @@ public class GSTServiceImpl implements GSTService {
             if (notBlank(request.getAddress())) user.setAddress(request.getAddress());
             if (notBlank(request.getCity())) user.setCity(request.getCity());
             if (notBlank(request.getPinCode())) user.setPinCode(request.getPinCode());
+            if (notBlank(request.getPassword())) user.setPassword(rawPassword);
+
             user.setDesignation("GST Officer");
 
             // Set creator reference

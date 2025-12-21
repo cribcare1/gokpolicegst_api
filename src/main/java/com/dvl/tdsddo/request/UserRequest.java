@@ -41,5 +41,7 @@ public class UserRequest {
     private String ddoTan;
     private String tanGstIn;
 
+    private String password;
+
 }
 

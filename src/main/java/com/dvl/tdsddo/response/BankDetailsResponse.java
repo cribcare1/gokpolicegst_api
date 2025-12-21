@@ -25,7 +25,6 @@ public class BankDetailsResponse {
     private String gstNumber;
     private Boolean isEditable;
     private String status;
-    @JsonFormat(pattern = "dd-MM-yyyy")
-    private LocalDateTime effectiveDate;
+    private String effectiveFrom;
 }
 

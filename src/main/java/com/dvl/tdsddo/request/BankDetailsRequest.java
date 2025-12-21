@@ -18,5 +18,6 @@ public class BankDetailsRequest {
     private Integer gstId;
     private Integer createdBy;
     private Integer ddoId;
+    private String effectiveDate;
 }
 
