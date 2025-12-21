@@ -277,6 +277,9 @@ public class UserserviceImpl implements UserService {
                 }else
                 loginResponse = new LoginResponse(user.getId(), user.getFullName(), user.getUserName(),
                         user.getMobileNumber(), user.getEmail(), user.getRole(), token, user.getCity(),user.getAddress(),user.getPinCode(),null,null,null,null,user.getDdoCode(),user.getArea(),null,null,null);
+
+                bankDetailsRepository.findFirstActiveBankByGstId(gm.getId()).ifPresent(loginResponse::setBankDetailsResponse);
+
             }
 
 			if (user.getRole() != null && user.getRole().equalsIgnoreCase("admin")) {
