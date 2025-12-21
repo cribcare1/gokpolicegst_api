@@ -231,7 +231,7 @@ public class InvoiceController {
             @RequestParam(required = false) Integer ddoId,
             @RequestParam(required = false) Integer gstId,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) Boolean isShortfall
+            @RequestParam(required = false, defaultValue = "false") Boolean isShortfall
 
     ) {
 

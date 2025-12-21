@@ -12,5 +12,5 @@ public class ReceiptCreationRequest {
     private Double amountPaid;
     private String paymentDate;
     public String differenceReason;
-    private Long differenceAmount;
+    public double differenceAmount;
 }

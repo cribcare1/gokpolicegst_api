@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface BankDetailsRepository extends JpaRepository<BankDetailsMaster,Integer> {
     boolean existsByAccountNumberAndStatus(String accountNumber, String status);
@@ -113,5 +114,40 @@ public interface BankDetailsRepository extends JpaRepository<BankDetailsMaster,I
     BankDetailsResponse findActiveBankByGstId(@Param("gstId") Integer gstId);
 
 
+    @Query("""
+    SELECT new com.dvl.tdsddo.response.BankDetailsResponse(
+        b.id,
+        b.bankName,
+        b.branchName,
+        b.accountNumber,
+        b.accountType,
+        b.accountName,
+        b.ifscCode,
+        b.micrCode,
+        g.id,
+        g.gstName,
+        g.gstNumber,
+        CASE WHEN COUNT(i.id) = 0 THEN true ELSE false END,
+        b.status,
+        b.updatedDate
+    )
+    FROM BankDetailsMaster b
+    JOIN GSTMaster g ON b.gstId = g.id
+    LEFT JOIN InvoiceMaster i ON i.bankId = b.id
+    WHERE b.gstId = :gstId
+      AND b.status = 'active'
+      AND b.id = (
+          SELECT MIN(b2.id)
+          FROM BankDetailsMaster b2
+          WHERE b2.gstId = :gstId
+            AND b2.status = 'active'
+      )
+    GROUP BY b.id, b.bankName, b.branchName, b.accountNumber, b.accountType,
+             b.accountName, b.ifscCode, b.micrCode,
+             g.id, g.gstName, g.gstNumber, b.status, b.updatedDate
+""")
+    Optional<BankDetailsResponse> findFirstActiveBankByGstId(
+            @Param("gstId") Integer gstId
+    );
 
 }
