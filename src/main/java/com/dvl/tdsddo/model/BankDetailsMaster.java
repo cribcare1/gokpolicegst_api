@@ -44,6 +44,10 @@ public class BankDetailsMaster extends BaseModel {
     private Integer ddoId;
     private String addedBy;
 
+    private String effectiveDate;
+
+//    private String effectiveTo;
+
     // 🟢 Relation (Many banks can be linked to one GST)
     @ManyToOne(fetch = FetchType.LAZY)
     @JsonIgnore

@@ -44,7 +44,7 @@ public interface BankDetailsRepository extends JpaRepository<BankDetailsMaster,I
         g.gstNumber,
         CASE WHEN COUNT(i.id) > 0 THEN false ELSE true END,
         b.status,
-        b.updatedDate
+        b.effectiveDate
     )
     FROM BankDetailsMaster b
     JOIN GSTMaster g ON b.gstId = g.id
@@ -70,7 +70,7 @@ public interface BankDetailsRepository extends JpaRepository<BankDetailsMaster,I
         g.gstNumber,
         CASE WHEN COUNT(i.id) > 0 THEN FALSE ELSE TRUE END,
         b.status,
-        b.updatedDate
+        b.effectiveDate
     )
     FROM BankDetailsMaster b
    left JOIN GSTMaster g ON b.gstId = g.id
@@ -79,7 +79,7 @@ public interface BankDetailsRepository extends JpaRepository<BankDetailsMaster,I
       AND b.status = 'active'
     GROUP BY b.id, b.bankName, b.branchName, b.accountNumber, b.accountType,
              b.accountName, b.ifscCode, b.micrCode, g.id, g.gstName, g.gstNumber,
-             b.status, b.updatedDate
+             b.status, b.effectiveDate
     ORDER BY b.updatedDate DESC
 """)
     List<BankDetailsResponse> findAllActiveBanksForDDO(@Param("ddoId") Integer ddoId);
@@ -100,7 +100,7 @@ public interface BankDetailsRepository extends JpaRepository<BankDetailsMaster,I
         g.gstNumber,
         CASE WHEN COUNT(i.id) = 0 THEN true ELSE false END,
         b.status,
-        b.updatedDate
+        b.effectiveDate
     )
     FROM BankDetailsMaster b
     JOIN GSTMaster g ON b.gstId = g.id
@@ -108,7 +108,7 @@ public interface BankDetailsRepository extends JpaRepository<BankDetailsMaster,I
     WHERE (:gstId IS NULL OR b.gstId = :gstId)
       AND b.status = 'active'
     GROUP BY b.id, b.bankName, b.branchName, b.accountNumber, b.accountType, b.accountName, b.ifscCode, b.micrCode,
-             g.id, g.gstName, g.gstNumber, b.status, b.updatedDate
+             g.id, g.gstName, g.gstNumber, b.status, b.effectiveDate
     ORDER BY b.updatedDate DESC
 """)
     BankDetailsResponse findActiveBankByGstId(@Param("gstId") Integer gstId);
@@ -129,7 +129,7 @@ public interface BankDetailsRepository extends JpaRepository<BankDetailsMaster,I
         g.gstNumber,
         CASE WHEN COUNT(i.id) = 0 THEN true ELSE false END,
         b.status,
-        b.updatedDate
+        b.effectiveDate
     )
     FROM BankDetailsMaster b
     JOIN GSTMaster g ON b.gstId = g.id
@@ -144,10 +144,17 @@ public interface BankDetailsRepository extends JpaRepository<BankDetailsMaster,I
       )
     GROUP BY b.id, b.bankName, b.branchName, b.accountNumber, b.accountType,
              b.accountName, b.ifscCode, b.micrCode,
-             g.id, g.gstName, g.gstNumber, b.status, b.updatedDate
+             g.id, g.gstName, g.gstNumber, b.status, b.effectiveDate
 """)
     Optional<BankDetailsResponse> findFirstActiveBankByGstId(
             @Param("gstId") Integer gstId
     );
 
+    Optional<BankDetailsMaster> findByGstIdAndStatus(Integer gstId, String active);
+
+    Optional<BankDetailsMaster> findByDdoIdAndStatus(Integer ddoId, String active);
+
+    boolean existsByGstIdAndStatus(Integer gstId, String active);
+
+    boolean existsByDdoIdAndStatus(Integer ddoId, String active);
 }

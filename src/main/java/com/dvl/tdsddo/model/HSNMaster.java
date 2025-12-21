@@ -51,9 +51,11 @@ public class HSNMaster extends BaseModel {
     @Transient
     private String gstNumber;
 
-    @Transient
     @JsonFormat(pattern = "dd-MM-yyyy")
-    private LocalDateTime effectiveDate;
+    private LocalDate effectiveFrom;
+
+    @JsonFormat(pattern = "dd-MM-yyyy")
+    private LocalDate effectiveTo;
 
 
     @Transient
@@ -62,18 +64,5 @@ public class HSNMaster extends BaseModel {
     @Column(name = "status", nullable = false, length = 10)
     @JsonIgnore
     private String status = TdsDdoConstant.ACTIVE;
-
-    @PostLoad
-    public void loadTransientFields() {
-
-        // Set effective date from BaseModel.updatedDate
-        if (this.getUpdatedDate() != null) {
-            this.effectiveDate = this.getUpdatedDate();
-        }
-        // Set GST Number from relation
-        if (gstMaster != null) {
-            this.gstNumber = gstMaster.getGstNumber();
-        }
-    }
 
 }

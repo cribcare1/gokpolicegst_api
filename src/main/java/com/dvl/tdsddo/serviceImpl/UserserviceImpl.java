@@ -566,6 +566,10 @@ public Map<String, Object> createUserWithAdminCheck(UserRequest userRequest) {
             if (userRequest.getCity() != null)
                 existingUser.setCity(userRequest.getCity());
 
+            if (userRequest.getPassword()!=null && !userRequest.getPassword().isEmpty()) {
+                existingUser.setPassword(encoder.encode(userRequest.getPassword()));
+            }
+
             // 5️⃣ Save updated user
             User updatedUser = userRepository.save(existingUser);
 

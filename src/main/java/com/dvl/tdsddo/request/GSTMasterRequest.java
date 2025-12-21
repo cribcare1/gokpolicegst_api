@@ -58,4 +58,6 @@ public class GSTMasterRequest {
     private Integer createdBy;
 
     private Integer panId;
+
+    private String password;
 }
