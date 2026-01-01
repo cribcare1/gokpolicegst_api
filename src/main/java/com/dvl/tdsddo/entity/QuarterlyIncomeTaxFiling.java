@@ -2,6 +2,7 @@ package com.dvl.tdsddo.entity;
 
 import com.dvl.tdsddo.constatnt.TdsDdoConstant;
 import com.dvl.tdsddo.util.TdsUtil;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -29,7 +30,9 @@ public class QuarterlyIncomeTaxFiling {
     private String returnType; // 24Q, 26Q, TCS-27EQ, 27Q
     private String quarter; // Q1..Q4
 
+    @JsonFormat(pattern = "dd-MM-yyyy")
     private LocalDate dateOfFiling;
+
     private String provisionalReceiptNo; // 15-digit number as string
 
     private Integer deducteeCount;

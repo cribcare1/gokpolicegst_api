@@ -1,6 +1,7 @@
 package com.dvl.tdsddo.model;
 
 import com.dvl.tdsddo.constatnt.TdsDdoConstant;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -25,6 +26,7 @@ public class MonthlyGstFiling {
 
     private String arnNo;
 
+    @JsonFormat(pattern = "dd-MM-yyyy")
     private LocalDate arnDate;
 
     private BigDecimal declaredAmount;   // GST TDS Declared
