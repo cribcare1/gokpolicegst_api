@@ -1,5 +1,6 @@
 package com.dvl.tdsddo.request;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -13,6 +14,7 @@ public class MonthlyGstFilingRequest {
     private Integer ddoId;
     private String filingMonth;
     private String arnNo;
+    @JsonFormat(pattern = "dd-MM-yyyy")
     private LocalDate arnDate;
 
     private BigDecimal declaredAmount;
