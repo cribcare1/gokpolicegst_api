@@ -33,7 +33,8 @@ public interface InvoiceMasterRepository extends JpaRepository<InvoiceMaster,Int
     @Query("""
        SELECT i.receiptNumber
        FROM InvoiceMaster i
-       WHERE i.gstId = :gstId AND i.ddoId = :ddoId AND i.receiptNumber IS NOT NULL
+       WHERE i.gstId = :gstId AND i.ddoId = :ddoId 
+       AND i.receiptNumber IS NOT NULL
        ORDER BY i.id DESC
        LIMIT 1
        """)

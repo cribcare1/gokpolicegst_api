@@ -35,6 +35,8 @@ public class MonthlyGstFiling {
 
     private BigDecimal penaltyAmount;
 
+    private String financialYear;  // Example: "2024-25"
+
     private String ackDocument;          // File path or URL
 
     private BigDecimal differenceAmount; // Declared - Paid
@@ -42,7 +44,6 @@ public class MonthlyGstFiling {
     private String remarks;
 
     private String status= TdsDdoConstant.ACTIVE;
-
 
 }
 

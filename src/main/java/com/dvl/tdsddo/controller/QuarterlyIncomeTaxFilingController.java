@@ -40,7 +40,7 @@ public class QuarterlyIncomeTaxFilingController {
         } catch (Exception ex) {
             ex.printStackTrace();
             res.put("status", TdsDdoConstant.ERROR);
-            res.put("message", "Something went wrong");
+            res.put("message", ex.getMessage());
         }
         return ResponseEntity.ok(res);
     }
@@ -77,6 +77,22 @@ public class QuarterlyIncomeTaxFilingController {
         return ResponseEntity.ok(res);
     }
 
+    // Get by GST Id
+    @GetMapping("/getByGSTIn/{gstInId}")
+    public ResponseEntity<Map<String, Object>> getByGSTIn(@PathVariable Integer gstInId) {
+        Map<String, Object> res = new HashMap<>();
+        try {
+            List<QuarterlyIncomeTaxFilingResponse> list = service.getByGstId(gstInId);
+            res.put("status", TdsDdoConstant.SUCCESS);
+            res.put("message", "Record List Fetched Successfully");
+            res.put("data", list);
+        } catch (Exception ex) {
+            res.put("status", TdsDdoConstant.ERROR);
+            res.put("message", "Unable to fetch records for ddoId: " + gstInId);
+        }
+        return ResponseEntity.ok(res);
+    }
+
     // Get by id
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getById(@PathVariable Long id) {
@@ -94,7 +110,7 @@ public class QuarterlyIncomeTaxFilingController {
     }
 
     // Delete
-    @DeleteMapping("/delete/{id}")
+    @PostMapping("/delete/{id}")
     public ResponseEntity<Map<String, Object>> delete(@PathVariable Long id) {
         Map<String, Object> res = new HashMap<>();
         try {

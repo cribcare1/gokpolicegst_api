@@ -44,7 +44,7 @@ public class MonthlyGstFilingController {
 
         } catch (Exception ex) {
             res.put("status", TdsDdoConstant.ERROR);
-            res.put("message", "Something went wrong");
+            res.put("message", ex.getMessage());
         }
 
         return ResponseEntity.ok(res);
@@ -134,6 +134,30 @@ public class MonthlyGstFilingController {
             ex.printStackTrace();
             res.put("status", TdsDdoConstant.ERROR);
             res.put("message", "Unable to fetch records for ddoId: " + ddoId);
+        }
+
+        return ResponseEntity.ok(res);
+    }
+
+
+    // ------------------ Get By GST ID ------------------
+
+    @GetMapping("/getMonthlyGstFilingByGSTId/{gstId}")
+    public ResponseEntity<Map<String, Object>> getMonthlyGstFilingByGSTId(@PathVariable Integer gstId) {
+
+        Map<String, Object> res = new HashMap<>();
+
+        try {
+            List<MonthlyGstFilingResponse> list = service.getByGSTId(gstId);
+
+            res.put("status", TdsDdoConstant.SUCCESS);
+            res.put("message", "Record List Fetched Successfully");
+            res.put("data", list);
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            res.put("status", TdsDdoConstant.ERROR);
+            res.put("message", "Unable to fetch records for ddoId: " + gstId);
         }
 
         return ResponseEntity.ok(res);

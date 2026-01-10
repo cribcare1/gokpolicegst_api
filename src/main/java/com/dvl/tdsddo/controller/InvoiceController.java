@@ -181,7 +181,7 @@ public class InvoiceController {
 
         try {
             //String invoiceNumber = invoiceService.generateInvoiceNumberWithoutTable(gstId, ddoId);
-            String invoiceNumber=  invoiceService.generateSubmittedInvoiceNumber(gstId, ddoId);
+            String invoiceNumber=  invoiceService.generateSingleReceiptNumber(gstId, ddoId);
             response.put("status", "success");
             response.put(TdsDdoConstant.MESSAGE, "Invoice Number generated successfully");
             response.put("invoiceNumber", invoiceNumber);

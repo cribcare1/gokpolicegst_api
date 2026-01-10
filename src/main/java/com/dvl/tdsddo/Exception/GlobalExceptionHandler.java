@@ -38,5 +38,10 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse> handleAllRunTimeException(Exception ex) {
         return ResponseEntity.ok(new ApiResponse(TdsDdoConstant.ERROR,  ex.getMessage(), null));
     }
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiResponse> handleBusinessException(BusinessException ex) {
+        return ResponseEntity.ok(new ApiResponse(TdsDdoConstant.ERROR,  ex.getMessage(), null));
+    }
 }
 

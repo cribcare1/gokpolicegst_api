@@ -18,4 +18,5 @@ public interface MonthlyGstFilingService {
 
     List<MonthlyGstFilingResponse> getAll();
     public void delete(Integer id);
+    public List<MonthlyGstFilingResponse> getByGSTId(Integer gstId);
 }

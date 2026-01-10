@@ -20,6 +20,6 @@ public class MonthlyGstFilingRequest {
     private BigDecimal declaredAmount;
     private BigDecimal paidAmount;
     private BigDecimal penaltyAmount;
-
+    private String financialYear;
     private String remark;
 }

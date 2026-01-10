@@ -23,4 +23,5 @@ public class MonthlyGstFilingResponse {
     private String remarks;
 
     private String ackDocument;
+    private String financialYear;
 }
