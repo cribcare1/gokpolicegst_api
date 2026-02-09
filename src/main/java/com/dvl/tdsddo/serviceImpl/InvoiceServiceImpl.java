@@ -178,19 +178,19 @@ public class InvoiceServiceImpl implements InvoiceService {
         // ============================
         // CREDIT NOTE
         // ============================
-        if (req.getCreditNote() != null) {
-
-            CreditNote note = creditNoteRepo.findByInvoiceId(invoice.getId())
-                    .orElse(new CreditNote());
-
-            note.setInvoiceId(invoice.getId());
-            note.setCreditNoteNumber(req.getCreditNote().getCreditNoteNumber());
-            note.setCreditNoteAmount(req.getCreditNote().getCreditNoteAmount());
-            note.setMismatchAmount(req.getCreditNote().getMismatchAmount());
-            note.setReason(req.getCreditNote().getReason());
-
-            creditNoteRepo.save(note);
-        }
+//        if (req.getCreditNote() != null) {
+//
+//            CreditNote note = creditNoteRepo.findByInvoiceId(invoice.getId())
+//                    .orElse(new CreditNote());
+//
+//            note.setInvoiceId(invoice.getId());
+//            note.setCreditNoteNumber(req.getCreditNote().getCreditNoteNumber());
+//            note.setCreditNoteAmount(req.getCreditNote().getCreditNoteAmount());
+//            note.setMismatchAmount(req.getCreditNote().getMismatchAmount());
+//            note.setReason(req.getCreditNote().getReason());
+//
+//            creditNoteRepo.save(note);
+//        }
 
         return invoice;
     }
@@ -1029,6 +1029,7 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
                                 .remarks(inv.getRemarks())
                                 .status(inv.getStatus())
                                 .notificationDetails(inv.getNotificationDetails())
+                                .shortFallReason(inv.getShortfallRemarks())
                                 .totalAmount(BigDecimal.valueOf(inv.getTotalAmount() == null ? 0.0 : inv.getTotalAmount()))
                                 .totalCgst(BigDecimal.valueOf(inv.getTotalCgst() == null ? 0.0 : inv.getTotalCgst()))
                                 .totalSgst(BigDecimal.valueOf(inv.getTotalSgst() == null ? 0.0 : inv.getTotalSgst()))
@@ -2160,17 +2161,17 @@ public String generateFinalInvoiceNumber(Integer gstId, Integer ddoId) {
                 ));
             }
 
-            if (first[3] != null) {
-                CreditNote cn = (CreditNote) first[3];
-                creditToSave.add(new CreditNote(
-                        null,
-                        shortfall.getId(),
-                        cn.getCreditNoteNumber(),
-                        cn.getCreditNoteAmount(),
-                        cn.getMismatchAmount(),
-                        cn.getReason()
-                ));
-            }
+//            if (first[3] != null) {
+//                CreditNote cn = (CreditNote) first[3];
+//                creditToSave.add(new CreditNote(
+//                        null,
+//                        shortfall.getId(),
+//                        cn.getCreditNoteNumber(),
+//                        cn.getCreditNoteAmount(),
+//                        cn.getMismatchAmount(),
+//                        cn.getReason()
+//                ));
+//            }
         }
 
         // ---------------------------

@@ -164,4 +164,14 @@ WHERE i.id IN :invoiceIds
 """)
     List<Object[]> fetchInvoicesForShortfall(
             @Param("invoiceIds") List<Integer> invoiceIds);
+
+    @Query("""
+    SELECT DISTINCT i.customerId
+    FROM InvoiceMaster i
+    WHERE i.customerId IN :customerIds
+""")
+    List<Integer> findCustomerIdsWithInvoices(
+            @Param("customerIds") List<Integer> customerIds
+    );
+
 }

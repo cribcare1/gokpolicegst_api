@@ -60,6 +60,7 @@ public class InvoiceMaster extends BaseModel {
     private String DifferenceReason;
     private String remarks;
     private String shortfallRemarks;
+    private String receiptRemarks;
     @Column(name = "notification_details", columnDefinition = "TEXT")
     private String notificationDetails;
     private Boolean isShortfall=false;

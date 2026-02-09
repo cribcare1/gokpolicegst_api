@@ -2,9 +2,12 @@ package com.dvl.tdsddo.controller;
 
 
 import com.dvl.tdsddo.constatnt.TdsDdoConstant;
+import com.dvl.tdsddo.model.CreditNote;
 import com.dvl.tdsddo.model.InvoiceMaster;
 import com.dvl.tdsddo.request.*;
+import com.dvl.tdsddo.response.CreditNoteDetails;
 import com.dvl.tdsddo.response.InvoiceResponse;
+import com.dvl.tdsddo.service.CreditNoteService;
 import com.dvl.tdsddo.service.InvoiceService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,6 +30,7 @@ import java.util.Map;
 public class InvoiceController {
 
     private final InvoiceService invoiceService;
+    private final CreditNoteService creditNoteService;
 
     // -----------------------------------------------------
     // 1) CREATE or UPDATE Invoice
@@ -326,6 +330,52 @@ public class InvoiceController {
                     "error", ex.getMessage()
             ));
         }
+    }
+
+
+    @PostMapping("/saveOrUpdateCreditNote")
+    public ResponseEntity<?> saveOrUpdateCreditNote(@RequestBody CreditNote creditNote) {
+
+        CreditNote saved = creditNoteService.saveOrUpdateCreditNote(creditNote);
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "status", "success",
+                        "message", creditNote.getId() == null
+                                ? "Credit Note created successfully"
+                                : "Credit Note updated successfully",
+                        "data", saved
+                )
+        );
+    }
+
+
+    @GetMapping("/getCreditNotes")
+    public ResponseEntity<?> getCreditNotes(
+            @RequestParam(required = false) Integer ddoId,
+            @RequestParam(required = false) Integer gstId
+    ) {
+
+        List<CreditNoteDetails> data =
+                creditNoteService.getCreditNotes(ddoId, gstId);
+
+        // ✅ Empty result handling
+        if (data == null || data.isEmpty()) {
+            return ResponseEntity.ok(Map.of(
+                    "status", "success",
+                    "message", "No credit notes found for the given criteria",
+                    "count", 0,
+                    "data", List.of()
+            ));
+        }
+
+        // ✅ Success response
+        return ResponseEntity.ok(Map.of(
+                "status", "success",
+                "message", "Credit Notes fetched successfully",
+                "count", data.size(),
+                "data", data
+        ));
     }
 
 }
