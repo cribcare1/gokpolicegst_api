@@ -86,4 +86,35 @@ public class AuthController {
             );
         }
     }
+
+    @GetMapping("/downloadImage/{folderName}/{fileName}")
+    public ResponseEntity<?> downloadImage(
+            @PathVariable String folderName,
+            @PathVariable String fileName
+    ) {
+        try {
+            Resource image = fileServiceUtil.fetchImages(folderName, fileName);
+
+            String contentType = Files.probeContentType(image.getFile().toPath());
+            if (contentType == null) {
+                contentType = "application/octet-stream";
+            }
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(
+                            HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"" + fileName + "\""
+                    )
+                    .body(image);
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "File not found"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Error while downloading file"));
+        }
+    }
+
 }

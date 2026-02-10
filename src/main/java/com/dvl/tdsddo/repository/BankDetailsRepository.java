@@ -76,7 +76,6 @@ public interface BankDetailsRepository extends JpaRepository<BankDetailsMaster,I
    left JOIN GSTMaster g ON b.gstId = g.id
     LEFT JOIN InvoiceMaster i ON i.bankId = b.id
     WHERE b.ddoId = :ddoId
-      AND b.status = 'active'
     GROUP BY b.id, b.bankName, b.branchName, b.accountNumber, b.accountType,
              b.accountName, b.ifscCode, b.micrCode, g.id, g.gstName, g.gstNumber,
              b.status, b.effectiveDate

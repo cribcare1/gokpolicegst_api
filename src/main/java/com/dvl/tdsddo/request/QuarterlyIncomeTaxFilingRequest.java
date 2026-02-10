@@ -1,5 +1,6 @@
 package com.dvl.tdsddo.request;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -14,7 +15,9 @@ public class QuarterlyIncomeTaxFilingRequest {
     private String returnType;
     private String quarter;
 
+    @JsonFormat(pattern = "dd-MM-yyyy")
     private LocalDate dateOfFiling;
+
     private String provisionalReceiptNo;
 
     private Integer deducteeCount;

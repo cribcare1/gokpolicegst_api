@@ -12,5 +12,6 @@ public interface QuarterlyIncomeTaxFilingService {
     List<QuarterlyIncomeTaxFilingResponse> getAll();
     void delete(Long id);
     List<QuarterlyIncomeTaxFilingResponse> getByDdoId(Integer ddoId);
+    public List<QuarterlyIncomeTaxFilingResponse> getByGstId(Integer gstId);
 }
 

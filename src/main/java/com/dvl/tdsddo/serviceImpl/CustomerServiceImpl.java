@@ -3,20 +3,20 @@ package com.dvl.tdsddo.serviceImpl;
 import com.dvl.tdsddo.constatnt.TdsDdoConstant;
 import com.dvl.tdsddo.model.CustomerMaster;
 import com.dvl.tdsddo.repository.CustomerMasterRepository;
+import com.dvl.tdsddo.repository.InvoiceMasterRepository;
 import com.dvl.tdsddo.request.CustomerRequest;
 import com.dvl.tdsddo.service.CustomerService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
 public class CustomerServiceImpl implements CustomerService {
     private final CustomerMasterRepository customerRepository;
+    private final InvoiceMasterRepository invoiceRepository;
     @Override
     @Transactional
     public Map<String, Object> addOrEditCustomer(CustomerRequest request) {
@@ -90,10 +90,37 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
 
+//    @Override
+//    public Map<String, Object> getAllActiveCustomersByDdoId(Integer ddoId) {
+//        try {
+//            List<CustomerMaster> customers = customerRepository.findByDdoIdAndStatus(ddoId, TdsDdoConstant.ACTIVE);
+//
+//            if (customers.isEmpty()) {
+//                return Map.of(
+//                        TdsDdoConstant.MESSAGE, "No active customers found for this DDO",
+//                        TdsDdoConstant.STATUS, TdsDdoConstant.ERROR
+//                );
+//            }
+//
+//            return Map.of(
+//                    TdsDdoConstant.MESSAGE, "Active customers fetched successfully",
+//                    TdsDdoConstant.STATUS, TdsDdoConstant.SUCCESS,
+//                    "data", customers
+//            );
+//        } catch (Exception e) {
+//            return Map.of(
+//                    TdsDdoConstant.MESSAGE, "Failed to fetch customers: " + e.getMessage(),
+//                    TdsDdoConstant.STATUS, TdsDdoConstant.ERROR
+//            );
+//        }
+//    }
+
     @Override
     public Map<String, Object> getAllActiveCustomersByDdoId(Integer ddoId) {
         try {
-            List<CustomerMaster> customers = customerRepository.findByDdoIdAndStatus(ddoId, TdsDdoConstant.ACTIVE);
+            List<CustomerMaster> customers =
+                    customerRepository.findByDdoIdAndStatus(
+                            ddoId, TdsDdoConstant.ACTIVE);
 
             if (customers.isEmpty()) {
                 return Map.of(
@@ -102,11 +129,29 @@ public class CustomerServiceImpl implements CustomerService {
                 );
             }
 
+            // 🔹 Extract customer IDs
+            List<Integer> customerIds = customers.stream()
+                    .map(CustomerMaster::getId)
+                    .toList();
+
+            // 🔹 Get customers that have invoices
+            List<Integer> invoiceCustomerIds =
+                    invoiceRepository.findCustomerIdsWithInvoices(customerIds);
+
+            // 🔹 Convert to Set for O(1) lookup
+            Set<Integer> invoiceCustomerSet = new HashSet<>(invoiceCustomerIds);
+
+            // 🔹 Set delete flag
+            customers.forEach(c ->
+                    c.setIsDeleteAllowed(!invoiceCustomerSet.contains(c.getId()))
+            );
+
             return Map.of(
                     TdsDdoConstant.MESSAGE, "Active customers fetched successfully",
                     TdsDdoConstant.STATUS, TdsDdoConstant.SUCCESS,
                     "data", customers
             );
+
         } catch (Exception e) {
             return Map.of(
                     TdsDdoConstant.MESSAGE, "Failed to fetch customers: " + e.getMessage(),
@@ -114,6 +159,7 @@ public class CustomerServiceImpl implements CustomerService {
             );
         }
     }
+
     @Override
     @Transactional
     public Map<String, Object> deleteCustomerById(Integer customerId) {

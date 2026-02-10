@@ -29,4 +29,6 @@ public class CustomerMaster extends BaseModel {
     private String exemptionNumber;
     private String serviceType;
     private String status= TdsDdoConstant.ACTIVE;  // ACTIVE / INACTIVE
+    @Transient
+    private Boolean isDeleteAllowed=true;
 }
